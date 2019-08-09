@@ -401,7 +401,11 @@ class FilterSet(graphene.InputObjectType):
         """
         empty_op = None
 
-        for operator, name in cls.GRAPHQL_OPERATOR_NAME.items():
+        operator_to_name = sorted(
+            cls.GRAPHQL_OPERATOR_NAME.items(), key=lambda x: -len(x[1])
+        )
+
+        for operator, name in operator_to_name:
             if name == '':
                 empty_op = operator
                 continue

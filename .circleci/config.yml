@@ -40,7 +40,12 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            nox | coveralls
+            nox
+      - run:
+          name: coveralls
+          command: |
+            . venv/bin/activate
+            coveralls
 
   deploy:
     docker:

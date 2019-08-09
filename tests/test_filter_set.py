@@ -5,6 +5,7 @@ from copy import deepcopy
 import graphene
 
 # Project
+import pytest
 from graphene_sqlalchemy_filter import FilterSet, filters
 from tests import models
 from tests.graphql_objects import USER_FILTER_FIELDS, UserFilter
@@ -121,3 +122,8 @@ def test_meta_without_model():
 
     filter_fields = set(F2._meta.fields)
     assert filter_fields == ok
+
+    with pytest.raises(AttributeError, match='Model not specified'):
+        class F3(F1):
+            class Meta:
+                fields = {'username': [...]}

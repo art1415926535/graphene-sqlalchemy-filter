@@ -206,14 +206,19 @@ class FilterSet(graphene.InputObjectType):
     def __init_subclass_with_meta__(
         cls, model=None, fields=None, _meta=None, **options
     ):
+        if model is None and fields:
+            raise AttributeError('Model not specified')
+
         if not _meta:
             _meta = FilterSetOptions(cls)
 
         cls.model = model
         _meta.model = model
 
-        # Add default filter objects.
-        filters_fields = cls._generate_default_filters(model, fields)
+        filters_fields = {}
+        if model is not None:
+            # Add default filter objects.
+            filters_fields = cls._generate_default_filters(model, fields)
 
         for op in [cls.AND, cls.OR, cls.NOT]:
             doc = cls.DESCRIPTIONS.get(op)

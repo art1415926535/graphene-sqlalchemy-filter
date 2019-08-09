@@ -99,3 +99,25 @@ def test_shortcut():
     ok = {'is_active', 'is_active_ne', 'is_active_is_null', 'and', 'or', 'not'}
 
     assert filter_fields == ok
+
+
+def test_meta_without_model():
+    ok = {'field', 'and', 'or', 'not'}
+
+    class F1(FilterSet):
+        field = graphene.Boolean()
+
+        @staticmethod
+        def field_filter(info, query, value):
+            return True
+
+    filter_fields = set(F1._meta.fields)
+
+    assert filter_fields == ok
+
+    class F2(F1):
+        class Meta:
+            fields = {}
+
+    filter_fields = set(F2._meta.fields)
+    assert filter_fields == ok

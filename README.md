@@ -23,8 +23,8 @@ class UserFilter(FilterSet):
             'is_active': [...],  # shortcut!
         }
 
-    @classmethod
-    def is_admin_filter(cls, info, query, value):
+    @staticmethod
+    def is_admin_filter(info, query, value):
         if value:
             return User.username == 'admin'
         else:
@@ -58,15 +58,14 @@ Now, we're going to create query.
 }
 ```
 
----
 🔥 **Let's rock!** 🔥
+
+---
 
 
 # Filters
 
 FilterSet class must inherit `graphene_sqlalchemy_filter.FilterSet` or your subclass of this class.
-
-Metaclass must contain the sqlalchemy model and fields.
 
 There are three types of filters:  
   1. [automatically generated filters](#automatically-generated-filters)  
@@ -84,6 +83,7 @@ class UserFilter(FilterSet):
            'is_active': [...],  # shortcut!
        }
 ```
+Metaclass must contain the sqlalchemy model and fields.
 
 Automatically generated filters must be specified by `fields` variable. 
 Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
@@ -98,12 +98,8 @@ Shortcut (default: `[...]`) will add all the allowed filters for this type of sq
 class UserFilter(FilterSet):
     is_admin = graphene.Boolean()
 
-    class Meta:
-        model = User
-        fields = {}
-  
-    @classmethod
-    def is_admin_filter(cls, info, query, value):
+    @staticmethod
+    def is_admin_filter(info, query, value):
         if value:
             return User.username == 'admin'
         else:
@@ -118,6 +114,7 @@ The filtration function takes the following arguments:
 
 The return value can be any type of sqlalchemy clause. This means that you can return `not_(and_(or_(...), ...))`.
 
+Metaclass is not required if you do not need automatically generated filters.
 
 ## Filters that require join
 This type of filter is the same as [simple filters](#simple-filters) but has a different return type.
@@ -127,10 +124,6 @@ The filtration function should return a new sqlalchemy query and clause (like si
 ```python
 class UserFilter(FilterSet):
     is_moderator = graphene.Boolean()
-
-    class Meta:
-        model = User
-        fields = {}
 
     @classmethod
     def is_admin_filter(cls, info, query, value):

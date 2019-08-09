@@ -38,8 +38,8 @@ class UserFilter(FilterSet):
         description='Member of the group that is named'
     )
 
-    @classmethod
-    def is_admin_filter(cls, info, query, value):
+    @staticmethod
+    def is_admin_filter(info, query, value):
         """Simple filter return only clause."""
         if value:
             return User.username == 'admin'

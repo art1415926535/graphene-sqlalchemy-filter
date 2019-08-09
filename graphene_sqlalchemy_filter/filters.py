@@ -177,6 +177,7 @@ class FilterSet(graphene.InputObjectType):
         IS_NULL: lambda *x: graphene.Boolean(description=x[2]),
         RANGE: _range_filter_type,
         IN: _in_filter_type,
+        NOT_IN: _in_filter_type,
     }
 
     DESCRIPTIONS = {

@@ -61,8 +61,8 @@ def test_wrong_filter(info, filterable_connection_field):
 
 def test_graphql_operators_renaming(info):
     class CustomBaseFilter(FilterSet):
-        GRAPHQL_OPERATOR_NAME = dict(
-            FilterSet.GRAPHQL_OPERATOR_NAME, ne='i_newer_asked_for_this'
+        GRAPHQL_EXPRESSION_NAMES = dict(
+            FilterSet.GRAPHQL_EXPRESSION_NAMES, ne='i_newer_asked_for_this'
         )
 
         class Meta:
@@ -105,8 +105,8 @@ def test_shortcut_renaming(info):
 
 def test_error_with_not_found_operator(info):
     class CustomUserFilter(FilterSet):
-        GRAPHQL_OPERATOR_NAME = dict(
-            FilterSet.GRAPHQL_OPERATOR_NAME, eq='equal'
+        GRAPHQL_EXPRESSION_NAMES = dict(
+            FilterSet.GRAPHQL_EXPRESSION_NAMES, eq='equal'
         )
 
         class Meta:

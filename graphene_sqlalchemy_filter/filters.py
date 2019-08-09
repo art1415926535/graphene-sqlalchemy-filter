@@ -104,7 +104,7 @@ class FilterSet(graphene.InputObjectType):
     OR = 'or'
     NOT = 'not'
 
-    GRAPHQL_OPERATOR_NAME = {
+    GRAPHQL_EXPRESSION_NAMES = {
         EQ: '',
         NE: NE,
         LIKE: LIKE,
@@ -154,7 +154,7 @@ class FilterSet(graphene.InputObjectType):
 
     ALL = [...]
 
-    FILTER_FUNCTION = {
+    FILTER_FUNCTIONS = {
         EQ: lambda field, v: field == v,
         NE: lambda field, v: field != v,
         LIKE: lambda field, v: field.like(v),
@@ -170,7 +170,7 @@ class FilterSet(graphene.InputObjectType):
         RANGE: lambda field, v: field.between(v[RANGE_BEGIN], v[RANGE_END]),
     }
 
-    FILTER_OBJECT_TYPE = {
+    FILTER_OBJECT_TYPES = {
         AND: lambda type_, _, doc: graphene.List(graphene.NonNull(type_)),
         OR: lambda type_, _, doc: graphene.List(graphene.NonNull(type_)),
         NOT: lambda type_, _, doc: type_,
@@ -217,9 +217,9 @@ class FilterSet(graphene.InputObjectType):
 
         for op in [cls.AND, cls.OR, cls.NOT]:
             doc = cls.DESCRIPTIONS.get(op)
-            graphql_name = cls.GRAPHQL_OPERATOR_NAME[op]
+            graphql_name = cls.GRAPHQL_EXPRESSION_NAMES[op]
             filters_fields[graphql_name] = graphene.InputField(
-                cls.FILTER_OBJECT_TYPE[op](cls, False, doc), description=doc
+                cls.FILTER_OBJECT_TYPES[op](cls, False, doc), description=doc
             )
 
         if not _meta.fields:
@@ -300,18 +300,18 @@ class FilterSet(graphene.InputObjectType):
         for field_name, field_object in model_fields.items():
             column_type = field_object['type']
 
-            operators = field_filters[field_name]
-            if operators == cls.ALL:
-                operators = filters_map[column_type.__class__].copy()
+            expressions = field_filters[field_name]
+            if expressions == cls.ALL:
+                expressions = filters_map[column_type.__class__].copy()
                 if field_object['nullable']:
-                    operators.append(cls.IS_NULL)
+                    expressions.append(cls.IS_NULL)
 
             field_type = convert_sqlalchemy_type(
                 column_type, field_object['column']
             )
 
             fields = cls._generate_filter_fields(
-                operators, field_name, field_type, field_object['nullable']
+                expressions, field_name, field_type, field_object['nullable']
             )
             for name, field in fields.items():
                 graphql_filters[name] = get_field_as(
@@ -323,7 +323,7 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def _generate_filter_fields(
         cls,
-        operators: 'List[str]',
+        expressions: 'List[str]',
         field_name: str,
         field_type: 'Type[graphene.ObjectType]',
         nullable: bool,
@@ -332,7 +332,7 @@ class FilterSet(graphene.InputObjectType):
         Generate all available filters for model column.
 
         Args:
-            operators: Allowed operators. Example: ['eq', 'lt', 'gt'].
+            expressions: Allowed expressions. Example: ['eq', 'lt', 'gt'].
             field_name: Model column name.
             field_type: GraphQL field type.
             nullable: Can field be is null.
@@ -343,16 +343,16 @@ class FilterSet(graphene.InputObjectType):
         """
         filters = {}
 
-        for op in operators:
+        for op in expressions:
             key = field_name
-            graphql_name = cls.GRAPHQL_OPERATOR_NAME[op]
+            graphql_name = cls.GRAPHQL_EXPRESSION_NAMES[op]
             if graphql_name:
                 key += DELIMITER + graphql_name
 
             doc = cls.DESCRIPTIONS.get(op)
 
             try:
-                filter_field = cls.FILTER_OBJECT_TYPE[op](
+                filter_field = cls.FILTER_OBJECT_TYPES[op](
                     field_type, nullable, doc
                 )
             except KeyError:
@@ -390,32 +390,32 @@ class FilterSet(graphene.InputObjectType):
     @lru_cache(maxsize=500)
     def _split_graphql_field(cls, graphql_field: str) -> 'Tuple[str, str]':
         """
-        Get model field name and operator.
+        Get model field name and expression.
 
         Args:
             graphql_field: Field name.
 
         Returns:
-            Model field name and operator name.
+            Model field name and expression name.
 
         """
-        empty_op = None
+        empty_expr = None
 
-        operator_to_name = sorted(
-            cls.GRAPHQL_OPERATOR_NAME.items(), key=lambda x: -len(x[1])
+        expression_to_name = sorted(
+            cls.GRAPHQL_EXPRESSION_NAMES.items(), key=lambda x: -len(x[1])
         )
 
-        for operator, name in operator_to_name:
+        for expression, name in expression_to_name:
             if name == '':
-                empty_op = operator
+                empty_expr = expression
                 continue
 
             key = DELIMITER + name
             if graphql_field.endswith(key):
-                return graphql_field[: -len(key)], operator
+                return graphql_field[: -len(key)], expression
 
-        if empty_op is not None:
-            return graphql_field, empty_op
+        if empty_expr is not None:
+            return graphql_field, empty_expr
 
         raise KeyError('Operator not found "{}"'.format(graphql_field))
 
@@ -446,19 +446,19 @@ class FilterSet(graphene.InputObjectType):
 
             return query, clause
 
-        if key == cls.GRAPHQL_OPERATOR_NAME[cls.AND]:
+        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.AND]:
             return cls._translate_many_filter(info, query, value, and_)
 
-        if key == cls.GRAPHQL_OPERATOR_NAME[cls.OR]:
+        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.OR]:
             return cls._translate_many_filter(info, query, value, or_)
 
-        if key == cls.GRAPHQL_OPERATOR_NAME[cls.NOT]:
+        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.NOT]:
             return cls._translate_many_filter(
                 info, query, value, lambda *x: not_(and_(*x))
             )
 
-        field, operator = cls._split_graphql_field(key)
-        filter_function = cls.FILTER_FUNCTION[operator]
+        field, expression = cls._split_graphql_field(key)
+        filter_function = cls.FILTER_FUNCTIONS[expression]
 
         try:
             clause = filter_function(getattr(cls.model, field), value)

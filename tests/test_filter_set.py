@@ -26,7 +26,7 @@ def test_default_filter_field_types():
     for model_field, operators in USER_FILTER_FIELDS.items():
         for op in operators:
             field = model_field
-            graphql_op = UserFilter.GRAPHQL_OPERATOR_NAME[op]
+            graphql_op = UserFilter.GRAPHQL_EXPRESSION_NAMES[op]
             if graphql_op:
                 field += filters.DELIMITER + graphql_op
 

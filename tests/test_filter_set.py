@@ -124,6 +124,7 @@ def test_meta_without_model():
     assert filter_fields == ok
 
     with pytest.raises(AttributeError, match='Model not specified'):
+
         class F3(F1):
             class Meta:
                 fields = {'username': [...]}

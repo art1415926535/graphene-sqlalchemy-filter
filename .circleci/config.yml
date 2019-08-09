@@ -1,0 +1,70 @@
+version: 2.1
+workflows:
+  build_and_deploy:
+    jobs:
+      - test:
+          name: "test_36"
+          version: "3.6"
+      - test:
+          name: "test_37"
+          version: "3.7"
+          filters:
+            tags:
+              only: /.*/
+      - deploy:
+          requires:
+            - test_37
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+            branches:
+              ignore: /.*/
+jobs:
+  test:
+    parameters:
+      version:
+        type: string
+        default: latest
+    docker:
+      - image: circleci/python:<< parameters.version >>
+    steps:
+      - checkout
+      - run:
+          name: install python dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install nox
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            nox
+  deploy:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      - run:
+          name: install python dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install twine wheel
+      - run:
+          name: init .pypirc
+          command: |
+            echo -e "[distutils]" >> ~/.pypirc
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = art1415926535" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      - run:
+          name: create package
+          command: |
+            . venv/bin/activate
+            python setup.py sdist bdist_wheel
+      - run:
+          name: upload to pypi
+          command: |
+            . venv/bin/activate
+            twine upload --repository pypi dist/*

@@ -196,7 +196,7 @@ class FilterSet(graphene.InputObjectType):
         RANGE: 'Selects values within a given range.',
         AND: 'Conjunction of filters joined by ``AND``.',
         OR: 'Conjunction of filters joined by ``OR``.',
-        NOT: 'Negation of filters conjunction joined by ``AND``.',
+        NOT: 'Negation of filters.',
     }
 
     class Meta:

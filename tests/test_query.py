@@ -137,7 +137,7 @@ def test_complex_filters(info, filterable_connection_field):
             {
                 'or': [
                     {'not': {'is_active': True}, 'is_moderator': True},
-                    {'member_of_group': 'Valgalla'},
+                    {'member_of_group': 'Valgalla', 'username_not_in': ['1']},
                     {},
                 ]
             },
@@ -154,7 +154,8 @@ def test_complex_filters(info, filterable_connection_field):
         ' AND is_moderator.id IS NOT NULL'
         ' OR "user".is_active != true'
         ' AND is_moderator.id IS NOT NULL'
-        ' OR of_group.name = :name_1)'
+        ' OR of_group.name = :name_1'
+        ' AND "user".username NOT IN (:username_3))'
     )
     where_clause = str(query.whereclause)
     assert where_clause == ok

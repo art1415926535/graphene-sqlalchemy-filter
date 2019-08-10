@@ -267,31 +267,22 @@ class BaseFilter(FilterSet):
     # Add expression.
     TODAY = 'today'
 
-    # Add the name of the expression in GraphQL.
-    GRAPHQL_EXPRESSION_NAMES = dict(
-        FilterSet.GRAPHQL_EXPRESSION_NAMES, today=TODAY
-    )
-
-    # Update allowed filters (used by shortcut).
-    ALLOWED_FILTERS = dict(FilterSet.ALLOWED_FILTERS)
-    ALLOWED_FILTERS[types.Date] = (
-        FilterSet.ALLOWED_FILTERS[types.Date] + [TODAY]
-    )
-    ALLOWED_FILTERS[types.DateTime] = (
-        FilterSet.ALLOWED_FILTERS[types.DateTime] + [TODAY]
-    )
-
-    # Add a filtering function (takes the sqlalchemy field and value).
-    FILTER_FUNCTIONS = dict(FilterSet.FILTER_FUNCTIONS, today=today_filter)
-
-    # Add the GraphQL input type. Equals the column type if not specified.
-    FILTER_OBJECT_TYPES = dict(
-        FilterSet.FILTER_OBJECT_TYPES,
-        today=lambda field_type, nullable, doc: graphene.Boolean(nullable=False),
-    )
-
-    # Description for the GraphQL schema.
-    DESCRIPTIONS = dict(FilterSet.DESCRIPTIONS, today='It is today.')
+    EXTRA_EXPRESSIONS = {
+        'today': {
+            # Add the name of the expression in GraphQL.
+            'graphql_name': 'today',
+            # Update allowed filters (used by shortcut).
+            'for_types': [types.Date, types.DateTime],
+            # Add a filtering function (takes the sqlalchemy field and value).
+            'filter': today_filter,
+            # Add the GraphQL input type. Column type by default.
+            'input_type': (
+                lambda type_, nullable, doc: graphene.Boolean(nullable=False)
+            ),
+            # Description for the GraphQL schema.
+            'description': 'It is today.',
+        }
+    }
 
     class Meta:
         abstract = True

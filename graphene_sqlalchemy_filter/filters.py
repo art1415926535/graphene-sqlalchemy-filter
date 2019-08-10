@@ -290,8 +290,7 @@ class FilterSet(graphene.InputObjectType):
                 if object_type is not None:
                     cls.FILTER_OBJECT_TYPES[key] = object_type
 
-                if description is not None:
-                    cls.DESCRIPTIONS[key] = object_type
+                cls.DESCRIPTIONS[key] = description
 
     @classmethod
     def aliased(

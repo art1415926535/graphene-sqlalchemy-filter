@@ -5,7 +5,7 @@ from graphene_sqlalchemy.utils import EnumValue
 import pytest
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
 from tests import models
-from tests.graphql_objects import UserConnection
+from tests.graphql_objects import UserConnection, UserFilter
 
 
 def test_empty_filters_query(info, filterable_connection_field):
@@ -119,6 +119,22 @@ def test_error_with_not_found_operator(info):
     filters = {'username': 'Guido'}
     with pytest.raises(KeyError, match='Operator not found "username"'):
         field.get_query(models.User, info, filters=filters)
+
+
+def test_extra_expression(info):
+    class CustomUserFilter(UserFilter):
+        class Meta:
+            model = models.User
+            fields = {'balance': ['zero']}
+
+    user_filters = CustomUserFilter()
+    field = FilterableConnectionField(UserConnection, filters=user_filters)
+    query = field.get_query(
+        models.User, info, filters={'balance_eq_zero': True}
+    )
+    ok = '"user".balance = :balance_1'
+    where_clause = str(query.whereclause)
+    assert where_clause == ok
 
 
 def test_complex_filters(info, filterable_connection_field):

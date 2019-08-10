@@ -4,7 +4,7 @@ from graphene import Connection, Node
 from graphene_sqlalchemy import SQLAlchemyObjectType
 
 # Database
-from sqlalchemy import and_
+from sqlalchemy import Integer, and_
 
 # Project
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
@@ -24,6 +24,21 @@ class UserConnection(Connection):
         node = UserNode
 
 
+class BaseFilter(FilterSet):
+    EXTRA_EXPRESSIONS = {
+        'zero': {
+            'graphql_name': 'eq_zero',
+            'for_types': [Integer],
+            'filter': lambda f, v: f == 0 if v else f != 0,
+            'input_type': (lambda t, n, d: graphene.Boolean(nullable=False)),
+            'description': 'Equal to zero.',
+        }
+    }
+
+    class Meta:
+        abstract = True
+
+
 USER_FILTER_FIELDS = {
     'username': ['eq', 'ne', 'in', 'ilike'],
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
@@ -31,7 +46,7 @@ USER_FILTER_FIELDS = {
 }
 
 
-class UserFilter(FilterSet):
+class UserFilter(BaseFilter):
     is_admin = graphene.Boolean(description='User name = admin')
     is_moderator = graphene.Boolean(description='User is a moderator')
     member_of_group = graphene.String(

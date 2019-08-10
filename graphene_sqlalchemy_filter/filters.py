@@ -1,6 +1,7 @@
 # Standard Library
 import contextlib
 import warnings
+from copy import deepcopy
 from functools import lru_cache
 
 # GraphQL
@@ -215,6 +216,15 @@ class FilterSet(graphene.InputObjectType):
         cls.model = model
         _meta.model = model
 
+        extra_expressions = {}
+        for klass in reversed(cls.__mro__):
+            with contextlib.suppress(AttributeError):
+                for key, expr in klass.EXTRA_EXPRESSIONS.items():
+                    extra_expressions[key] = expr
+
+        if extra_expressions:
+            cls._register_extra_expressions(extra_expressions)
+
         filters_fields = {}
         if model is not None:
             # Add default filter objects.
@@ -242,6 +252,46 @@ class FilterSet(graphene.InputObjectType):
         meta_fields = set(_meta.fields.keys())
         if meta_fields:
             cls._custom_filters = meta_fields.difference(default_filter_keys)
+
+    @classmethod
+    def _register_extra_expressions(cls, extra_expressions: dict):
+        """
+        Register new expressions.
+
+        Args:
+            extra_expressions: New expressions.
+
+        """
+        cls.GRAPHQL_EXPRESSION_NAMES = deepcopy(cls.GRAPHQL_EXPRESSION_NAMES)
+        cls.ALLOWED_FILTERS = deepcopy(cls.ALLOWED_FILTERS)
+        cls.FILTER_FUNCTIONS = deepcopy(cls.FILTER_FUNCTIONS)
+        cls.FILTER_OBJECT_TYPES = deepcopy(cls.FILTER_OBJECT_TYPES)
+        cls.DESCRIPTIONS = deepcopy(cls.DESCRIPTIONS)
+
+        for key, data in extra_expressions.items():
+            graphql_name = data['graphql_name']
+            for_types = data.get('for_types', [])
+            filter_ = data['filter']
+            object_type = data.get('input_type')
+            description = data.get('description')
+
+            cls.GRAPHQL_EXPRESSION_NAMES.update({key: graphql_name})
+
+            for sqla_type in for_types:
+                try:
+                    all_expr = cls.ALLOWED_FILTERS[sqla_type]
+                except KeyError:
+                    all_expr = []
+
+                all_expr.append(key)
+                cls.ALLOWED_FILTERS[sqla_type] = all_expr
+                cls.FILTER_FUNCTIONS[key] = filter_
+
+                if object_type is not None:
+                    cls.FILTER_OBJECT_TYPES[key] = object_type
+
+                if description is not None:
+                    cls.DESCRIPTIONS[key] = object_type
 
     @classmethod
     def aliased(

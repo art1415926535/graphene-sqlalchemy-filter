@@ -1,8 +1,9 @@
 # Project
+from tests.graphql_objects import schema
 from tests.models import User
 
 
-def test_empty_response(schema, session):
+def test_empty_response(session):
     session.add(User(username='user_1', is_active=True, balance=0))
     session.add(User(username='user_2', is_active=True))
     session.commit()
@@ -29,7 +30,7 @@ def test_empty_response(schema, session):
     assert node == {'username': 'user_2'}
 
 
-def test_data_response_and_filtration(schema, session):
+def test_data_response_and_filtration(session):
     session.add(User(username='user_1', is_active=True, balance=0))
     session.add(User(username='user_2', is_active=True))
     session.commit()

@@ -1,5 +1,4 @@
 # GraphQL
-from graphene import Schema
 from graphql import ResolveInfo
 
 # Database
@@ -8,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 # Project
 import pytest
-from tests.graphql_objects import Query
+from tests import models
 from tests.models import Base
 
 
@@ -46,11 +45,21 @@ def info():
     session.remove()
 
 
-@pytest.fixture(scope='function')
-def filterable_connection_field():
-    return Query.field
+@pytest.yield_fixture(scope="function")
+def info_and_user_query():
+    db = create_engine('sqlite://')  # in-memory
+    connection = db.engine.connect()
+    transaction = connection.begin()
+    Base.metadata.create_all(connection)
 
+    session_factory = sessionmaker(bind=connection)
+    session = scoped_session(session_factory)
 
-@pytest.fixture(scope='function')
-def schema():
-    return Schema(query=Query)
+    info = ResolveInfo(*[None] * 9, context={'session': session})
+    user_query = session.query(models.User)
+
+    yield info, user_query
+
+    transaction.rollback()
+    connection.close()
+    session.remove()

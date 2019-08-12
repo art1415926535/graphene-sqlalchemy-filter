@@ -97,3 +97,6 @@ class UserFilter(BaseFilter):
 
 class Query(graphene.ObjectType):
     field = FilterableConnectionField(UserConnection, filters=UserFilter())
+
+
+schema = graphene.Schema(query=Query)

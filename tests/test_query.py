@@ -3,15 +3,15 @@ from graphene_sqlalchemy.utils import EnumValue
 
 # Project
 import pytest
-from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
+from graphene_sqlalchemy_filter import FilterSet
 from tests import models
-from tests.graphql_objects import UserConnection, UserFilter
+from tests.graphql_objects import Query, UserFilter
 
 
-def test_empty_filters_query(info, filterable_connection_field):
+def test_sort(info):
     filters = None
     sort = 'username desc'
-    query = filterable_connection_field.get_query(
+    query = Query.field.get_query(
         models.User, info, sort=EnumValue('username', sort), filters=filters
     )
 
@@ -21,12 +21,19 @@ def test_empty_filters_query(info, filterable_connection_field):
     assert str(query._order_by[0]) == sort
 
 
-def test_filters(info, filterable_connection_field):
+def test_empty_filters_query(info_and_user_query):
+    info, user_query = info_and_user_query
+
+    query = UserFilter.filter(info, user_query, {})
+
+    where_clause = query.whereclause
+    assert where_clause is None
+
+
+def test_filters(info_and_user_query):
+    info, user_query = info_and_user_query
     filters = {'username_ilike': '%user%', 'balance_gt': 20}
-    sort = 'username desc'
-    query = filterable_connection_field.get_query(
-        models.User, info, sort=EnumValue('username', sort), filters=filters
-    )
+    query = UserFilter.filter(info, user_query, filters)
 
     ok = (
         'lower("user".username) LIKE lower(:username_1) '
@@ -35,14 +42,12 @@ def test_filters(info, filterable_connection_field):
     where_clause = str(query.whereclause)
     assert where_clause == ok
 
-    assert str(query._order_by[0]) == sort
 
+def test_custom_filter(info_and_user_query):
+    info, user_query = info_and_user_query
 
-def test_custom_filter(info, filterable_connection_field):
     filters = {'is_admin': True}
-    query = filterable_connection_field.get_query(
-        models.User, info, filters=filters
-    )
+    query = UserFilter.filter(info, user_query, filters)
 
     ok = '"user".username = :username_1'
     where_clause = str(query.whereclause)
@@ -51,15 +56,17 @@ def test_custom_filter(info, filterable_connection_field):
     assert 'join' not in str(query).lower()
 
 
-def test_wrong_filter(info, filterable_connection_field):
+def test_wrong_filter(info_and_user_query):
+    info, user_query = info_and_user_query
+
     filters = {'is_admin_true': True}
     with pytest.raises(KeyError, match='Field not found: is_admin_true'):
-        filterable_connection_field.get_query(
-            models.User, info, filters=filters
-        )
+        UserFilter.filter(info, user_query, filters)
 
 
-def test_graphql_operators_renaming(info):
+def test_graphql_operators_renaming(info_and_user_query):
+    info, user_query = info_and_user_query
+
     class CustomBaseFilter(FilterSet):
         GRAPHQL_EXPRESSION_NAMES = dict(
             FilterSet.GRAPHQL_EXPRESSION_NAMES, ne='i_newer_asked_for_this'
@@ -73,18 +80,17 @@ def test_graphql_operators_renaming(info):
             model = models.User
             fields = {'username': ['eq', 'ne']}
 
-    user_filters = CustomUserFilter()
-    field = FilterableConnectionField(UserConnection, filters=user_filters)
-
     filters = {'username_i_newer_asked_for_this': 'Cthulhu'}
-    query = field.get_query(models.User, info, filters=filters)
+    query = CustomUserFilter.filter(info, user_query, filters)
 
     ok = '"user".username != :username_1'
     where_clause = str(query.whereclause)
     assert where_clause == ok
 
 
-def test_shortcut_renaming(info):
+def test_shortcut_renaming(info_and_user_query):
+    info, user_query = info_and_user_query
+
     class CustomUserFilter(FilterSet):
         ALL = '__all__'
 
@@ -92,18 +98,17 @@ def test_shortcut_renaming(info):
             model = models.User
             fields = {'username': '__all__'}
 
-    user_filters = CustomUserFilter()
-    field = FilterableConnectionField(UserConnection, filters=user_filters)
-
     filters = {'username': 'Guido'}
-    query = field.get_query(models.User, info, filters=filters)
+    query = CustomUserFilter.filter(info, user_query, filters)
 
     ok = '"user".username = :username_1'
     where_clause = str(query.whereclause)
     assert where_clause == ok
 
 
-def test_error_with_not_found_operator(info):
+def test_error_with_not_found_operator(info_and_user_query):
+    info, user_query = info_and_user_query
+
     class CustomUserFilter(FilterSet):
         GRAPHQL_EXPRESSION_NAMES = dict(
             FilterSet.GRAPHQL_EXPRESSION_NAMES, eq='equal'
@@ -113,32 +118,30 @@ def test_error_with_not_found_operator(info):
             model = models.User
             fields = {'username': ['eq']}
 
-    user_filters = CustomUserFilter()
-    field = FilterableConnectionField(UserConnection, filters=user_filters)
-
     filters = {'username': 'Guido'}
     with pytest.raises(KeyError, match='Operator not found "username"'):
-        field.get_query(models.User, info, filters=filters)
+        CustomUserFilter.filter(info, user_query, filters)
 
 
-def test_extra_expression(info):
+def test_extra_expression(info_and_user_query):
+    info, user_query = info_and_user_query
+
     class CustomUserFilter(UserFilter):
         class Meta:
             model = models.User
             fields = {'balance': ['zero']}
 
-    user_filters = CustomUserFilter()
-    field = FilterableConnectionField(UserConnection, filters=user_filters)
-    query = field.get_query(
-        models.User, info, filters={'balance_eq_zero': True}
-    )
+    filters = {'balance_eq_zero': True}
+    query = CustomUserFilter.filter(info, user_query, filters)
+
     ok = '"user".balance = :balance_1'
+
     where_clause = str(query.whereclause)
     assert where_clause == ok
 
 
-def test_complex_filters(info, filterable_connection_field):
-    assert hasattr(filterable_connection_field, 'filters')
+def test_complex_filters(info_and_user_query):
+    info, user_query = info_and_user_query
 
     filters = {
         'is_admin': False,
@@ -159,9 +162,7 @@ def test_complex_filters(info, filterable_connection_field):
             },
         ],
     }
-    query = filterable_connection_field.get_query(
-        models.User, info, filters=filters
-    )
+    query = UserFilter.filter(info, user_query, filters)
 
     ok = (
         '"user".username != :username_1 AND '

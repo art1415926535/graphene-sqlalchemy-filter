@@ -354,13 +354,13 @@ class FilterSet(graphene.InputObjectType):
 
             expressions = field_filters[field_name]
             if expressions == cls.ALL:
-                column_type = column_type.__class__
+                type_class = column_type.__class__
                 try:
-                    expressions = filters_map[column_type].copy()
+                    expressions = filters_map[type_class].copy()
                 except KeyError:
                     for type_, exprs in filters_map.items():
-                        if issubclass(column_type, type_):
-                            expressions = exprs
+                        if issubclass(type_class, type_):
+                            expressions = exprs.copy()
                             break
                     else:
                         raise KeyError(

@@ -7,6 +7,15 @@ tests = 'tests'
 dirs = [module, tests]
 
 
+@nox.session(python='3.6')
+def lint(session):
+    session.install('flake8', 'black', 'isort')
+
+    session.run('black', '--check', '-l', '79', '-S', *dirs)
+    session.run('isort', '--check-only', '-rc', *dirs)
+    session.run('flake8', '--show-source', '--statistics', *dirs)
+
+
 @nox.session(python=['3.6', '3.7'])
 def test(session):
     session.install('pytest', 'pytest-cov')
@@ -19,12 +28,3 @@ def test(session):
         *dirs,
         *session.posargs,
     )
-
-
-@nox.session(python='3.6')
-def lint(session):
-    session.install('flake8', 'black', 'isort')
-
-    session.run('black', '--check', '-l', '79', '-S', *dirs)
-    session.run('isort', '--check-only', '-rc', *dirs)
-    session.run('flake8', '--show-source', '--statistics', *dirs)

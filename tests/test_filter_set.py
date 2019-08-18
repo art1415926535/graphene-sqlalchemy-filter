@@ -5,13 +5,14 @@ from copy import deepcopy
 import graphene
 
 # Database
-from sqlalchemy import types
+from sqlalchemy import Column, types
 
 # Project
 import pytest
 from graphene_sqlalchemy_filter import FilterSet, filters
 from tests import models
 from tests.graphql_objects import USER_FILTER_FIELDS, UserFilter
+from tests.models import Base
 
 
 def test_custom_filter_field_type():
@@ -272,3 +273,48 @@ def test_extra_expression():
         'or',
     }
     assert filter_fields == ok
+
+
+def test_sql_alchemy_subclass_column_types():
+    class F(FilterSet):
+        ALLOWED_FILTERS = {types.Integer: ['eq', 'gt']}
+
+        class Meta:
+            abstract = True
+
+    class MyNVARCHAR(types.NVARCHAR):
+        pass
+
+    class TestModel(Base):
+        __tablename__ = 'test'
+
+        id = Column(types.SmallInteger, primary_key=True, autoincrement=True)
+        text = Column(MyNVARCHAR)
+
+    class TestFilter(F):
+        EXTRA_ALLOWED_FILTERS = {types.String: ['eq']}
+
+        class Meta:
+            model = TestModel
+            fields = {'id': [...], 'text': [...]}
+
+    filter_fields = set(TestFilter._meta.fields)
+    ok = {'id', 'id_gt', 'text', 'text_is_null', 'and', 'not', 'or'}
+
+    assert filter_fields == ok
+
+
+def test_sql_alchemy_wrong_column_types():
+    class F(FilterSet):
+        ALLOWED_FILTERS = {}
+
+        class Meta:
+            abstract = True
+
+    msg = 'Unsupported column type. Hint: use EXTRA_ALLOWED_FILTERS.'
+    with pytest.raises(KeyError, match=msg):
+
+        class TestFilter(F):
+            class Meta:
+                model = models.User
+                fields = {'id': [...]}

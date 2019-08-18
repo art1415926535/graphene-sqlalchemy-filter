@@ -301,3 +301,26 @@ class PostFilter(BaseFilter):
   }
 }
 ```
+
+
+## Custom column types
+`ALLOWED_FILTERS` and `EXTRA_ALLOWED_FILTERS` only affect shortcut.
+
+If you do not use the shortcut, you can skip the next steps described in the section.
+
+```python
+class MyString(types.String):
+    pass
+
+
+class BaseFilter(FilterSet):
+    # You can override all allowed filters
+    # ALLOWED_FILTERS = {types.Integer: ['eq']}
+    
+    # Or add new column type
+    EXTRA_ALLOWED_FILTERS = {MyString: ['eq']}
+
+    class Meta:
+        abstract = True
+
+```

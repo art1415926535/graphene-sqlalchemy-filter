@@ -328,6 +328,31 @@ Custom expression
       }
     }
 
+
+Custom column types
+-------------------
+
+``ALLOWED_FILTERS`` and ``EXTRA_ALLOWED_FILTERS`` only affect shortcut.
+
+If you do not use the shortcut, you can skip the next steps described in the section.
+
+.. code:: python
+
+    class MyString(types.String):
+        pass
+
+
+    class BaseFilter(FilterSet):
+        # You can override all allowed filters
+        # ALLOWED_FILTERS = {types.Integer: ['eq']}
+
+        # Or add new column type
+        EXTRA_ALLOWED_FILTERS = {MyString: ['eq']}
+
+        class Meta:
+            abstract = True
+
+
 .. |preview| image:: https://github.com/art1415926535/graphene-sqlalchemy-filter/blob/master/preview.gif?raw=true
 .. |circle-ci| image:: https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter.svg?style=svg
    :target: https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter

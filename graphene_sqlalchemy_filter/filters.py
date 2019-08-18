@@ -125,31 +125,19 @@ class FilterSet(graphene.InputObjectType):
     }
 
     ALLOWED_FILTERS = {
-        # Boolean
         types.Boolean: [EQ, NE],
-        # Date and time
         types.Date: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Time: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.DateTime: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        # Text
         types.String: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
-        types.Text: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
-        types.Unicode: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
-        types.UnicodeText: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
         TSVectorType: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
-        # Number
-        types.Float: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.Numeric: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.SmallInteger: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Integer: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.BigInteger: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        # PostgreSQL
+        types.Numeric: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
+        types.ARRAY: [EQ, NE, IN, NOT_IN],
         postgresql.UUID: [EQ, NE, IN, NOT_IN],
         postgresql.INET: [EQ, NE, IN, NOT_IN],
         postgresql.CIDR: [EQ, NE, IN, NOT_IN],
-        postgresql.ARRAY: [EQ, NE, IN, NOT_IN],
         postgresql.JSON: [EQ, NE, IN, NOT_IN],
-        postgresql.JSONB: [EQ, NE, IN, NOT_IN],
         postgresql.HSTORE: [EQ, NE, IN, NOT_IN],
     }
 
@@ -217,13 +205,18 @@ class FilterSet(graphene.InputObjectType):
         _meta.model = model
 
         extra_expressions = {}
+        extra_allowed_filters = {}
         for klass in reversed(cls.__mro__):
             with contextlib.suppress(AttributeError):
                 for key, expr in klass.EXTRA_EXPRESSIONS.items():
                     extra_expressions[key] = expr
 
-        if extra_expressions:
-            cls._register_extra_expressions(extra_expressions)
+            with contextlib.suppress(AttributeError):
+                for key, exprs in klass.EXTRA_ALLOWED_FILTERS.items():
+                    extra_allowed_filters[key] = exprs
+
+        if extra_expressions or extra_allowed_filters:
+            cls._register_extra(extra_expressions, extra_allowed_filters)
 
         filters_fields = {}
         if model is not None:
@@ -254,16 +247,20 @@ class FilterSet(graphene.InputObjectType):
             cls._custom_filters = meta_fields.difference(default_filter_keys)
 
     @classmethod
-    def _register_extra_expressions(cls, extra_expressions: dict):
+    def _register_extra(
+        cls, extra_expressions: dict, extra_allowed_filters: dict
+    ):
         """
-        Register new expressions.
+        Register new expressions and allowed filters.
 
         Args:
             extra_expressions: New expressions.
+            extra_allowed_filters: New allowed filters.
 
         """
         cls.GRAPHQL_EXPRESSION_NAMES = deepcopy(cls.GRAPHQL_EXPRESSION_NAMES)
         cls.ALLOWED_FILTERS = deepcopy(cls.ALLOWED_FILTERS)
+        cls.ALLOWED_FILTERS.update(extra_allowed_filters)
         cls.FILTER_FUNCTIONS = deepcopy(cls.FILTER_FUNCTIONS)
         cls.FILTER_OBJECT_TYPES = deepcopy(cls.FILTER_OBJECT_TYPES)
         cls.DESCRIPTIONS = deepcopy(cls.DESCRIPTIONS)
@@ -283,7 +280,8 @@ class FilterSet(graphene.InputObjectType):
                 except KeyError:
                     all_expr = []
 
-                all_expr.append(key)
+                if key not in all_expr:
+                    all_expr.append(key)
                 cls.ALLOWED_FILTERS[sqla_type] = all_expr
                 cls.FILTER_FUNCTIONS[key] = filter_
 
@@ -356,7 +354,20 @@ class FilterSet(graphene.InputObjectType):
 
             expressions = field_filters[field_name]
             if expressions == cls.ALL:
-                expressions = filters_map[column_type.__class__].copy()
+                column_type = column_type.__class__
+                try:
+                    expressions = filters_map[column_type].copy()
+                except KeyError:
+                    for type_, exprs in filters_map.items():
+                        if issubclass(column_type, type_):
+                            expressions = exprs
+                            break
+                    else:
+                        raise KeyError(
+                            'Unsupported column type. '
+                            'Hint: use EXTRA_ALLOWED_FILTERS.'
+                        )
+
                 if field_object['nullable']:
                     expressions.append(cls.IS_NULL)
 

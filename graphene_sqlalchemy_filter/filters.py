@@ -313,7 +313,16 @@ class FilterSet(graphene.InputObjectType):
             Alias.
 
         """
-        filter_aliases = info.context[cls._filter_aliases]
+        context = info.context
+
+        if isinstance(context, dict):
+            filter_aliases = context[cls._filter_aliases]
+        elif '__dict__' in context.__dir__():
+            filter_aliases = getattr(context, cls._filter_aliases)
+        else:
+            raise RuntimeError(
+                'Not supported with info.context type {}'.format(type(context))
+            )
 
         key = element, name
         try:
@@ -443,7 +452,20 @@ class FilterSet(graphene.InputObjectType):
             Filtered query instance.
 
         """
-        info.context[cls._filter_aliases] = {}
+        context = info.context
+
+        if isinstance(context, dict):
+            context[cls._filter_aliases] = {}
+        elif '__dict__' in context.__dir__():
+            setattr(context, cls._filter_aliases, {})
+        else:
+            msg = (
+                'Graphene-SQLAlchemy-Filter: '
+                'info.context has an unsupported type {}. '
+                'Now cls.aliased is not supported. '
+                'Allowed types: dict and object with __dict__ attribute.'
+            ).format(type(context))
+            warnings.warn(msg, RuntimeWarning)
 
         query, sqla_filters = cls._translate_many_filter(info, query, filters)
         if sqla_filters is not None:

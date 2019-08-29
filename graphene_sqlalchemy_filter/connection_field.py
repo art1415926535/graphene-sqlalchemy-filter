@@ -1,6 +1,5 @@
 # GraphQL
-from graphene_sqlalchemy import SQLAlchemyConnectionField, get_query
-from graphene_sqlalchemy.utils import EnumValue
+from graphene_sqlalchemy import SQLAlchemyConnectionField
 from graphql import ResolveInfo
 
 
@@ -15,12 +14,7 @@ class FilterableConnectionField(SQLAlchemyConnectionField):
     @classmethod
     def get_query(cls, model, info: ResolveInfo, sort=None, **args):
         """Standard get_query with filtering."""
-        query = get_query(model, info.context)
-        if sort is not None:
-            if isinstance(sort, EnumValue):
-                query = query.order_by(sort.value)
-            else:
-                query = query.order_by(*(col.value for col in sort))
+        query = super().get_query(model, info, sort, **args)
 
         request_filters = args.get(cls.filter_arg)
         if request_filters:
@@ -43,6 +37,6 @@ class FilterableConnectionField(SQLAlchemyConnectionField):
         """
         field_name = info.field_asts[0].name.value
         schema_field = info.parent_type.fields.get(field_name)
-        filters = schema_field.args[cls.filter_arg].type
-        filters = filters.graphene_type  # type: FilterSet
+        filters_type = schema_field.args[cls.filter_arg].type
+        filters = filters_type.graphene_type  # type: FilterSet
         return filters

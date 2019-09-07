@@ -63,7 +63,7 @@ class UserFilter(BaseFilter):
 
     @classmethod
     def is_moderator_filter(cls, info, query, value):
-        membership = cls.aliased(info, Membership, name='is_moderator')
+        membership = cls.aliased(query, Membership, name='is_moderator')
 
         query = query.join(
             membership,
@@ -81,8 +81,8 @@ class UserFilter(BaseFilter):
 
     @classmethod
     def member_of_group_filter(cls, info, query, value):
-        membership = cls.aliased(info, Membership, name='member_of')
-        group = cls.aliased(info, Group, name='of_group')
+        membership = cls.aliased(query, Membership, name='member_of')
+        group = cls.aliased(query, Group, name='of_group')
 
         query = query.join(membership, User.memberships).join(
             group, membership.group

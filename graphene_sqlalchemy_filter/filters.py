@@ -16,7 +16,7 @@ from sqlalchemy import and_, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.query import Query, _MapperEntity
 
 
 MYPY = False
@@ -40,7 +40,7 @@ except ImportError:
 
 
 if MYPY:
-    FilterType = Dict[str, Any]  # pragma: no cover
+    FilterType = 'Dict[str, Any]'  # pragma: no cover
 
 
 DELIMITER = '_'
@@ -293,7 +293,7 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def aliased(
         cls,
-        info,
+        query,
         element,
         alias=None,
         name=None,
@@ -307,10 +307,87 @@ class FilterSet(graphene.InputObjectType):
             Other arguments are the same as sqlalchemy.orm.aliased.
 
         Args:
-            info: Graphene resolve info.
+            query: SQLAlchemy query (Deprecated: Graphene resolve info).
 
         Returns:
             Alias.
+
+        """
+        if isinstance(query, Query):
+            filter_aliases = cls._aliases_from_query(query)
+        else:
+            example = cls._build_example_for_deprecation_warning(
+                element, alias, name, flat, adapt_on_names
+            )
+            warnings.warn(
+                'Graphene resolve info is deprecated, use SQLAlchemy query. '
+                + example,
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            filter_aliases = cls._aliases_from_info(query)
+
+        key = element, name
+
+        try:
+            return filter_aliases[key]
+        except KeyError:
+            alias = aliased(element, alias, name, flat, adapt_on_names)
+
+            if not isinstance(query, Query):
+                filter_aliases[key] = alias
+
+            return alias
+
+    @classmethod
+    def _build_example_for_deprecation_warning(
+        cls, element, alias, name, flat, adapt_on_names
+    ) -> str:
+        """
+        Build message for deprecation warning.
+
+        Returns:
+            Example code.
+
+        """
+        example = 'Example: cls.aliased(query, Model)'
+        with contextlib.suppress(Exception):
+            args = {
+                'alias': alias,
+                'name': name,
+                'flat': flat,
+                'adapt_on_names': adapt_on_names,
+            }
+            args_list = []
+            for k, v in args.items():
+                if not v:
+                    continue
+
+                if isinstance(v, str):
+                    v = '"{}"'.format(v)
+                args_list.append(k + '=' + v)
+
+            example = 'Hint: cls.aliased(query, {}, {})'.format(
+                element.__name__, ', '.join(args_list)
+            )
+
+        return example
+
+    @classmethod
+    def _aliases_from_info(
+        cls, info: graphene.ResolveInfo
+    ) -> 'Dict[str, _MapperEntity]':
+        """
+        Get cached aliases from graphene ResolveInfo object.
+
+        Notes:
+            Deprecated.
+
+        Args:
+            info: Graphene ResolveInfo object.
+
+        Returns:
+            Dictionary of model aliases.
 
         """
         context = info.context
@@ -324,14 +401,26 @@ class FilterSet(graphene.InputObjectType):
                 'Not supported with info.context type {}'.format(type(context))
             )
 
-        key = element, name
-        try:
-            return filter_aliases[key]
+        return filter_aliases
 
-        except KeyError:
-            alias = aliased(element, alias, name, flat, adapt_on_names)
-            filter_aliases[key] = alias
-            return alias
+    @classmethod
+    def _aliases_from_query(cls, query: Query) -> 'Dict[str, _MapperEntity]':
+        """
+        Get aliases from SQLAlchemy query.
+
+        Args:
+            query: SQLAlchemy query.
+
+        Returns:
+            Dictionary of model aliases.
+
+        """
+        aliases = {
+            (mapper._target, mapper.name): mapper.entity
+            for mapper in query._join_entities
+        }
+
+        return aliases
 
     @classmethod
     def _generate_default_filters(

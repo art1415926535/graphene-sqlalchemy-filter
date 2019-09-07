@@ -127,7 +127,7 @@ class UserFilter(FilterSet):
 
     @classmethod
     def is_admin_filter(cls, info, query, value):
-        membership = cls.aliased(info, Membership, name='is_moderator')
+        membership = cls.aliased(query, Membership, name='is_moderator')
   
         query = query.join(
             membership,
@@ -147,9 +147,11 @@ class UserFilter(FilterSet):
 
 ### Model aliases
 
-The function `cls.aliased(info, model, name='...')` caches [sqlalchemy aliases](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) in the query filtration scope by a given model class and name. It has one differing parameter - `info` (graphene ResolveInfo object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased).
+The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) from the query. It has one differing parameter - `query` (SQLAlchemy Query object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased).
 
 Identical joins will be skipped by sqlalchemy.
+
+> Changed in version 1.7: The first parameter is now a query.
 
 
 # Features

@@ -551,7 +551,7 @@ class FilterSet(graphene.InputObjectType):
             msg = (
                 'Graphene-SQLAlchemy-Filter: '
                 'info.context has an unsupported type {}. '
-                'Now cls.aliased is not supported. '
+                'Now cls.aliased(info, ...) is not supported. '
                 'Allowed types: dict and object with __dict__ attribute.'
             ).format(type(context))
             warnings.warn(msg, RuntimeWarning)

@@ -65,14 +65,10 @@ Now, we're going to create query.
 
 --------------
 
-
 Filters
 =======
 
-FilterSet class must inherit ``graphene_sqlalchemy_filter.FilterSet`` or
-your subclass of this class.
-
-Metaclass must contain the sqlalchemy model and fields.
+FilterSet class must inherit ``graphene_sqlalchemy_filter.FilterSet`` or your subclass of this class.
 
 There are three types of filters:
 
@@ -96,15 +92,43 @@ Automatically generated filters
 
 Metaclass must contain the sqlalchemy model and fields.
 
-Automatically generated filters must be specified by ``fields`` variable.
-Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
+Automatically generated filters must be specified by ``fields`` variable. Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
 
-Allowed filter values: ``'eq'``, ``'ne'``, ``'like'``, ``'ilike'``,
-``'regexp'``, ``'is_null'``, ``'in'``, ``'not_in'``, ``'lt'``,
-``'lte'``, ``'gt'``, ``'gte'``, ``'range'``.
+Shortcut (default: ``[...]``) will add all the allowed filters for this type of sqlalchemy field.
 
-Shortcut (default: ``[...]``) will add all the allowed filters for this
-type of sqlalchemy field.
++--------------------+------------------------------------+-------------------+
+| Key                | Description                        | GraphQL postfix   |
++====================+====================================+===================+
+| ``eq``             | equal                              |                   |
++--------------------+------------------------------------+-------------------+
+| ``ne``             | not equal                          | Ne                |
++--------------------+------------------------------------+-------------------+
+| ``like``           | like                               | Like              |
++--------------------+------------------------------------+-------------------+
+| ``ilike``          | insensitive like                   | Ilike             |
++--------------------+------------------------------------+-------------------+
+| ``is_null``        | is null                            | IsNull            |
++--------------------+------------------------------------+-------------------+
+| ``in``             | in                                 | In                |
++--------------------+------------------------------------+-------------------+
+| ``not_in``         | not in                             | NotIn             |
++--------------------+------------------------------------+-------------------+
+| ``lt``             | less than                          | Lt                |
++--------------------+------------------------------------+-------------------+
+| ``lte``            | less than or equal                 | Lte               |
++--------------------+------------------------------------+-------------------+
+| ``gt``             | greater than                       | Gt                |
++--------------------+------------------------------------+-------------------+
+| ``gte``            | greater than or equal              | Gte               |
++--------------------+------------------------------------+-------------------+
+| ``range``          | in range                           | Range             |
++--------------------+------------------------------------+-------------------+
+| ``contains``       | contains (PostgreSQL array)        | Contains          |
++--------------------+------------------------------------+-------------------+
+| ``contained_by``   | contained\_by (PostgreSQL array)   | ContainedBy       |
++--------------------+------------------------------------+-------------------+
+| ``overlap``        | overlap (PostgreSQL array)         | Overlap           |
++--------------------+------------------------------------+-------------------+
 
 Simple filters
 --------------
@@ -121,29 +145,20 @@ Simple filters
             else:
                 return User.username != 'admin'
 
-Each simple filter has a class variable that passes to GraphQL schema as
-an input type and function ``<field_name>_filter`` that makes
-filtration.
+Each simple filter has a class variable that passes to GraphQL schema as an input type and function ``<field_name>_filter`` that makes filtration.
 
-The filtration function takes the following arguments:
+The filtration function takes the following arguments: \* ``info`` - ResolveInfo graphene object \* ``query`` - sqlalchemy query (not used in that filters type) \* ``value`` - the value of a filter
 
--  ``info`` - ResolveInfo graphene object
--  ``query`` - sqlalchemy query (not used in that filters type)
--  ``value`` - the value of a filter
-
-The return value can be any type of sqlalchemy clause. This means that
-you can return ``not_(and_(or_(...), ...))``.
+The return value can be any type of sqlalchemy clause. This means that you can return ``not_(and_(or_(...), ...))``.
 
 Metaclass is not required if you do not need automatically generated filters.
 
 Filters that require join
 -------------------------
 
-This type of filter is the same as `simple filters <#simple-filters>`__
-but has a different return type.
+This type of filter is the same as `simple filters <#simple-filters>`__ but has a different return type.
 
-The filtration function should return a new sqlalchemy query and clause
-(like simple filters).
+The filtration function should return a new sqlalchemy query and clause (like simple filters).
 
 .. code:: python
 
@@ -153,7 +168,7 @@ The filtration function should return a new sqlalchemy query and clause
         @classmethod
         def is_admin_filter(cls, info, query, value):
             membership = cls.aliased(query, Membership, name='is_moderator')
-      
+
             query = query.join(
                 membership,
                 and_(
@@ -172,15 +187,11 @@ The filtration function should return a new sqlalchemy query and clause
 Model aliases
 ~~~~~~~~~~~~~
 
-The function ``cls.aliased(query, model, name='...')`` returns `sqlalchemy
-alias <https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased>`__
-from the query. It has one differing parameter - ``query`` (SQLAlchemy Query object). Other
-arguments are the same as `sqlalchemy.orm.aliased <https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased>`__.
+The function ``cls.aliased(query, model, name='...')`` returns `sqlalchemy alias <https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased>`__ from the query. It has one differing parameter - ``query`` (SQLAlchemy Query object). Other arguments are the same as `sqlalchemy.orm.aliased <https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased>`__.
 
 Identical joins will be skipped by sqlalchemy.
 
     Changed in version 1.7: The first parameter is now a query.
-
 
 Features
 ========
@@ -192,7 +203,7 @@ Rename GraphQL filter field
 
     class CustomField(FilterableConnectionField):
         filter_arg = 'where'
-        
+
 
     class Query(ObjectType):
         all_users = CustomField(UserConnection, where=UserFilter())
@@ -329,7 +340,6 @@ Custom expression
         edges { node { id } }
       }
     }
-
 
 Custom column types
 -------------------

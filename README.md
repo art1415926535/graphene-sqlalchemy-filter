@@ -88,10 +88,25 @@ Metaclass must contain the sqlalchemy model and fields.
 Automatically generated filters must be specified by `fields` variable. 
 Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
 
-Allowed filter values: `'eq'`, `'ne'`, `'like'`, `'ilike'`, `'regexp'`, `'is_null'`, `'in'`, `'not_in'`, `'lt'`, `'lte'`, `'gt'`, `'gte'`, `'range'`.
-
 Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field.
 
+| Key            | Description                     | GraphQL postfix |
+|----------------|---------------------------------|-----------------|
+| `eq`           | equal                           |                 |
+| `ne`           | not equal                       | Ne              |
+| `like`         | like                            | Like            |
+| `ilike`        | insensitive like                | Ilike           |
+| `is_null`      | is null                         | IsNull          |
+| `in`           | in                              | In              |
+| `not_in`       | not in                          | NotIn           |
+| `lt`           | less than                       | Lt              |
+| `lte`          | less than or equal              | Lte             |
+| `gt`           | greater than                    | Gt              |
+| `gte`          | greater than or equal           | Gte             |
+| `range`        | in range                        | Range           |
+| `contains`     | contains (PostgreSQL array)     | Contains        |
+| `contained_by` | contained_by (PostgreSQL array) | ContainedBy     |
+| `overlap`      | overlap (PostgreSQL array)      | Overlap         |
 
 ## Simple filters
 ```python

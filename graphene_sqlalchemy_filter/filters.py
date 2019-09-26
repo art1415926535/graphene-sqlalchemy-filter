@@ -12,11 +12,11 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 from graphql import ResolveInfo
 
 # Database
-from sqlalchemy import and_, not_, or_, types
+from sqlalchemy import and_, cast, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.query import Query, _MapperEntity
+from sqlalchemy.orm.query import Query
 
 
 MYPY = False
@@ -31,6 +31,12 @@ if MYPY:
         Tuple,
         Union,
     )
+    from sqlalchemy import Column  # noqa: F401; pragma: no cover
+    from sqlalchemy.orm.query import (  # noqa: F401; pragma: no cover
+        _MapperEntity,
+    )
+
+    FilterType = 'Dict[str, Any]'  # pragma: no cover
 
 
 try:
@@ -39,8 +45,12 @@ except ImportError:
     TSVectorType = object
 
 
-if MYPY:
-    FilterType = 'Dict[str, Any]'  # pragma: no cover
+def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
+    column_type = field.type
+    if isinstance(column_type, postgresql.ARRAY):
+        value = cast(value, column_type)
+
+    return field == value
 
 
 DELIMITER = '_'
@@ -91,7 +101,6 @@ class FilterSet(graphene.InputObjectType):
     NE = 'ne'
     LIKE = 'like'
     ILIKE = 'ilike'
-    REGEXP = 'regexp'
     IS_NULL = 'is_null'
     IN = 'in'
     NOT_IN = 'not_in'
@@ -100,6 +109,9 @@ class FilterSet(graphene.InputObjectType):
     GT = 'gt'
     GTE = 'gte'
     RANGE = 'range'
+    CONTAINS = 'contains'
+    CONTAINED_BY = 'contained_by'
+    OVERLAP = 'overlap'
 
     AND = 'and'
     OR = 'or'
@@ -110,7 +122,6 @@ class FilterSet(graphene.InputObjectType):
         NE: NE,
         LIKE: LIKE,
         ILIKE: ILIKE,
-        REGEXP: REGEXP,
         IS_NULL: IS_NULL,
         IN: IN,
         NOT_IN: NOT_IN,
@@ -119,6 +130,9 @@ class FilterSet(graphene.InputObjectType):
         GT: GT,
         GTE: GTE,
         RANGE: RANGE,
+        CONTAINS: CONTAINS,
+        CONTAINED_BY: CONTAINED_BY,
+        OVERLAP: OVERLAP,
         AND: AND,
         OR: OR,
         NOT: NOT,
@@ -129,26 +143,37 @@ class FilterSet(graphene.InputObjectType):
         types.Date: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Time: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.DateTime: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.String: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
-        TSVectorType: [EQ, NE, LIKE, ILIKE, REGEXP, IN, NOT_IN],
+        types.String: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
+        TSVectorType: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
         types.Integer: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Numeric: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.ARRAY: [EQ, NE, IN, NOT_IN],
         postgresql.UUID: [EQ, NE, IN, NOT_IN],
         postgresql.INET: [EQ, NE, IN, NOT_IN],
         postgresql.CIDR: [EQ, NE, IN, NOT_IN],
         postgresql.JSON: [EQ, NE, IN, NOT_IN],
         postgresql.HSTORE: [EQ, NE, IN, NOT_IN],
+        postgresql.ARRAY: [
+            EQ,
+            NE,
+            IN,
+            NOT_IN,
+            LT,
+            LTE,
+            GT,
+            GTE,
+            CONTAINS,
+            CONTAINED_BY,
+            OVERLAP,
+        ],
     }
 
     ALL = [...]
 
     FILTER_FUNCTIONS = {
-        EQ: lambda field, v: field == v,
-        NE: lambda field, v: field != v,
+        EQ: lambda field, v: _eq_filter(field, v),
+        NE: lambda field, v: not_(_eq_filter(field, v)),
         LIKE: lambda field, v: field.like(v),
         ILIKE: lambda field, v: field.ilike(v),
-        REGEXP: lambda field, v: field == v,
         IS_NULL: lambda field, v: field.is_(None) if v else field.isnot(None),
         IN: lambda field, v: field.in_(v),
         NOT_IN: lambda field, v: field.notin_(v),
@@ -157,6 +182,9 @@ class FilterSet(graphene.InputObjectType):
         GT: lambda field, v: field > v,
         GTE: lambda field, v: field >= v,
         RANGE: lambda field, v: field.between(v[RANGE_BEGIN], v[RANGE_END]),
+        CONTAINS: lambda field, v: field.contains(cast(v, field.type)),
+        CONTAINED_BY: lambda field, v: field.contained_by(cast(v, field.type)),
+        OVERLAP: lambda field, v: field.overlap(cast(v, field.type)),
     }
 
     FILTER_OBJECT_TYPES = {
@@ -174,7 +202,6 @@ class FilterSet(graphene.InputObjectType):
         NE: 'Not match.',
         LIKE: 'Case-sensitive containment test.',
         ILIKE: 'Case-insensitive containment test.',
-        REGEXP: 'Case-sensitive regular expression match.',
         IS_NULL: 'Takes either `true` or `false`.',
         IN: 'In a given list.',
         NOT_IN: 'Not in a given list.',
@@ -183,6 +210,17 @@ class FilterSet(graphene.InputObjectType):
         GT: 'Greater than.',
         GTE: 'Greater than or equal to.',
         RANGE: 'Selects values within a given range.',
+        CONTAINS: (
+            'Elements are a superset of the elements '
+            'of the argument array expression.'
+        ),
+        CONTAINED_BY: (
+            'Elements are a proper subset of the elements '
+            'of the argument array expression.'
+        ),
+        OVERLAP: (
+            'Array has elements in common with an argument array expression.'
+        ),
         AND: 'Conjunction of filters joined by ``AND``.',
         OR: 'Conjunction of filters joined by ``OR``.',
         NOT: 'Negation of filters.',
@@ -519,7 +557,10 @@ class FilterSet(graphene.InputObjectType):
                     field_type, nullable, doc
                 )
             except KeyError:
-                filter_field = field_type(description=doc)
+                if isinstance(field_type, graphene.List):
+                    filter_field = field_type
+                else:
+                    filter_field = field_type(description=doc)
 
             filters[key] = filter_field
 

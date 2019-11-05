@@ -1,5 +1,6 @@
 # Standard Library
 import contextlib
+import inspect
 import warnings
 from copy import deepcopy
 from functools import lru_cache
@@ -38,11 +39,22 @@ if MYPY:
 
     FilterType = 'Dict[str, Any]'  # pragma: no cover
 
+    GRAPHENE_OBJECT_OR_CLASS = Union[  # pragma: no cover
+        graphene.ObjectType, Type[graphene.ObjectType]
+    ]
+
 
 try:
     from sqlalchemy_utils import TSVectorType
 except ImportError:
     TSVectorType = object
+
+
+def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
+    if inspect.isclass(obj):
+        return obj
+
+    return obj.__class__
 
 
 def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
@@ -61,23 +73,29 @@ RANGE_END = 'end'
 _range_filter_cache = {}
 
 
-def _range_filter_type(type_: graphene.ObjectType, _: bool, doc: str):
-    with contextlib.suppress(KeyError):
-        return _range_filter_cache[type_]
+def _range_filter_type(
+    type_: 'GRAPHENE_OBJECT_OR_CLASS', _: bool, doc: str
+) -> graphene.InputObjectType:
+    of_type = _get_class(type_)
 
-    element_type = graphene.NonNull(type_)
+    with contextlib.suppress(KeyError):
+        return _range_filter_cache[of_type]
+
+    element_type = graphene.NonNull(of_type)
     klass = type(
-        str(type_) + 'Range',
+        str(of_type) + 'Range',
         (graphene.InputObjectType,),
         {RANGE_BEGIN: element_type, RANGE_END: element_type},
     )
     result = klass(description=doc)
-    _range_filter_cache[type_] = result
+    _range_filter_cache[of_type] = result
     return result
 
 
-def _in_filter_type(type_: graphene.ObjectType, nullable: bool, doc: str):
-    of_type = type_
+def _in_filter_type(
+    type_: 'GRAPHENE_OBJECT_OR_CLASS', nullable: bool, doc: str
+) -> graphene.List:
+    of_type = _get_class(type_)
     if not nullable:
         of_type = graphene.NonNull(of_type)
 
@@ -560,6 +578,7 @@ class FilterSet(graphene.InputObjectType):
                 if isinstance(field_type, graphene.List):
                     filter_field = field_type
                 else:
+                    field_type = _get_class(field_type)
                     filter_field = field_type(description=doc)
 
             filters[key] = filter_field

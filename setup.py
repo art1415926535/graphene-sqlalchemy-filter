@@ -18,7 +18,7 @@ with open('README.rst') as f:
 
 
 requirements = [
-    'graphene-sqlalchemy>=2.2.1,<3',
+    'graphene-sqlalchemy>=2.1.0,<3',
     'SQLAlchemy<2',
 ]
 

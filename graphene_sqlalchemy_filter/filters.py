@@ -54,7 +54,7 @@ def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
     if inspect.isclass(obj):
         return obj
 
-    return obj.__class__
+    return obj.__class__  # only graphene-sqlalchemy<=2.2.0; pragma: no cover
 
 
 def _eq_filter(field: 'Column', value: 'Any') -> 'Any':

@@ -6,7 +6,7 @@ tests = 'tests'
 dirs = [module, tests]
 
 
-@nox.session(python='3.7')
+@nox.session(python='3.6')
 def lint(session):
     session.install('flake8', 'black', 'isort')
 
@@ -16,18 +16,11 @@ def lint(session):
 
 
 @nox.session(python=['3.6', '3.7'])
-@nox.parametrize("graphene_sqlalchemy", ['==2.1.0', '==2.2.0', '>=2.2.1'])
+@nox.parametrize("graphene_sqlalchemy", ['==2.1.0', '==2.2.0', '==2.2.1'])
 def test(session, graphene_sqlalchemy):
     session.install('pytest')
     session.install('-e', '.')
     session.install(f'graphene-sqlalchemy{graphene_sqlalchemy}')
-
-    if not graphene_sqlalchemy.startswith('=='):
-        print(
-            'graphene_sqlalchemy version:',
-            __import__('graphene_sqlalchemy').__version__,
-        )
-
     session.run('pytest', *dirs, *session.posargs)
 
 

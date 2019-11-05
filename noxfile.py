@@ -1,4 +1,3 @@
-import pkg_resources
 import nox
 
 
@@ -26,7 +25,7 @@ def test(session, graphene_sqlalchemy):
     if not graphene_sqlalchemy.startswith('=='):
         print(
             'graphene_sqlalchemy version:',
-            pkg_resources.get_distribution('graphene_sqlalchemy').version,
+            __import__('graphene_sqlalchemy').__version__,
         )
 
     session.run('pytest', *dirs, *session.posargs)

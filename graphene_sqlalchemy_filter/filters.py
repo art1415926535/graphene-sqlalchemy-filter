@@ -95,7 +95,11 @@ def _range_filter_type(
 def _in_filter_type(
     type_: 'GRAPHENE_OBJECT_OR_CLASS', nullable: bool, doc: str
 ) -> graphene.List:
-    of_type = _get_class(type_)
+    of_type = type_
+
+    if not isinstance(of_type, graphene.List):
+        of_type = _get_class(type_)
+
     if not nullable:
         of_type = graphene.NonNull(of_type)
 

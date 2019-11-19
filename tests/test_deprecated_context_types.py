@@ -1,5 +1,7 @@
-# Project
+# Third Party
 import pytest
+
+# Project
 from tests import models
 from tests.graphql_objects import UserFilter
 

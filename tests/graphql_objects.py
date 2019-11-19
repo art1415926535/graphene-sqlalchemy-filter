@@ -13,17 +13,6 @@ from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
 from .models import Group, Membership, User
 
 
-class UserNode(SQLAlchemyObjectType):
-    class Meta:
-        model = User
-        interfaces = (Node,)
-
-
-class UserConnection(Connection):
-    class Meta:
-        node = UserNode
-
-
 class BaseFilter(FilterSet):
     EXTRA_EXPRESSIONS = {
         'zero': {
@@ -95,8 +84,64 @@ class UserFilter(BaseFilter):
         fields = USER_FILTER_FIELDS
 
 
+class MembershipFilter(BaseFilter):
+    class Meta:
+        model = Membership
+        fields = {'is_moderator': [...]}
+
+
+class GroupFilter(BaseFilter):
+    class Meta:
+        model = Group
+        fields = {'name': [...]}
+
+
+class MyFilterableConnectionField(FilterableConnectionField):
+    filters = {
+        User: UserFilter(),
+        Membership: MembershipFilter(),
+        Group: GroupFilter(),
+    }
+
+
+class UserNode(SQLAlchemyObjectType):
+    class Meta:
+        model = User
+        interfaces = (Node,)
+        connection_field_factory = MyFilterableConnectionField.factory
+
+
+class UserConnection(Connection):
+    class Meta:
+        node = UserNode
+
+
+class MembershipNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Membership
+        interfaces = (Node,)
+        connection_field_factory = MyFilterableConnectionField.factory
+
+
+class MembershipConnection(Connection):
+    class Meta:
+        node = MembershipNode
+
+
+class GroupNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Group
+        interfaces = (Node,)
+        connection_field_factory = MyFilterableConnectionField.factory
+
+
+class GroupConnection(Connection):
+    class Meta:
+        node = GroupNode
+
+
 class Query(graphene.ObjectType):
-    field = FilterableConnectionField(UserConnection, filters=UserFilter())
+    field = MyFilterableConnectionField(UserConnection)
 
 
 schema = graphene.Schema(query=Query)

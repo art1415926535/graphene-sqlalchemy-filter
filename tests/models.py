@@ -7,15 +7,6 @@ from sqlalchemy.orm import backref, relationship
 Base = declarative_base()
 
 
-class User(Base):
-    __tablename__ = 'user'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(50), nullable=False, unique=True, index=True)
-    balance = Column(Integer, default=None)
-    is_active = Column(Boolean, default=True)
-
-
 class Membership(Base):
     __tablename__ = 'member'
 
@@ -24,8 +15,30 @@ class Membership(Base):
     group_id = Column(ForeignKey('group.id'))
     is_moderator = Column(Boolean, nullable=False, default=False)
 
-    user = relationship('User', backref=backref('memberships'))
-    group = relationship('Group', backref=backref('memberships'))
+    creator_username = Column(ForeignKey('user.username'))
+
+
+class User(Base):
+    __tablename__ = 'user'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), nullable=False, unique=True, index=True)
+    balance = Column(Integer, default=None)
+    is_active = Column(Boolean, default=True)
+
+    memberships = relationship(
+        'Membership',
+        primaryjoin=id == Membership.user_id,
+        backref=backref('user'),
+    )
+    created_memberships = relationship(
+        'Membership',
+        primaryjoin=username == Membership.creator_username,
+        backref=backref('creator'),
+    )
+    groups = relationship(
+        'Group', primaryjoin=id == Membership.user_id, secondary='member'
+    )
 
 
 class Group(Base):
@@ -33,3 +46,5 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True, index=True)
+
+    memberships = relationship('Membership', backref=backref('group'))

@@ -1,6 +1,9 @@
 # Standard Library
 from copy import deepcopy
 
+# Third Party
+import pytest
+
 # GraphQL
 import graphene
 
@@ -8,7 +11,6 @@ import graphene
 from sqlalchemy import Column, types
 
 # Project
-import pytest
 from graphene_sqlalchemy_filter import FilterSet, filters
 from tests import models
 from tests.graphql_objects import USER_FILTER_FIELDS, UserFilter

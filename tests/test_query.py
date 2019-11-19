@@ -1,8 +1,10 @@
+# Third Party
+import pytest
+
 # GraphQL
 from graphene_sqlalchemy.utils import EnumValue
 
 # Project
-import pytest
 from graphene_sqlalchemy_filter import FilterSet
 from tests import models
 from tests.graphql_objects import Query, UserFilter

@@ -1,3 +1,6 @@
+# Third Party
+import pytest
+
 # GraphQL
 from graphql import ResolveInfo
 
@@ -6,7 +9,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 # Project
-import pytest
 from tests import models
 from tests.models import Base
 

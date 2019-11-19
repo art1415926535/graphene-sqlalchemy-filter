@@ -58,8 +58,6 @@ Now, we're going to create query.
 }
 ```
 
-🔥 **Let's rock!** 🔥
-
 ---
 
 
@@ -171,12 +169,112 @@ Identical joins will be skipped by sqlalchemy.
 
 # Features
 
+## Filter registration and nested fields filters
+
+Filters can be registered for each SQLAlchemy model in a subclass of `FilterableConnectionField`.
+
+Register your filters by inheriting `FilterableConnectionField` and setting `filters` (key - SQLAlchemy model, value - FilterSet object).
+
+```python
+class CustomField(FilterableConnectionField):
+    filters = {
+        User: UserFilter(),
+    }
+```
+
+Overriding `SQLAlchemyObjectType.connection_field_factory` allows you to generate nested connections with filters.
+
+```python
+class UserNode(SQLAlchemyObjectType):
+    class Meta:
+        model = User
+        interfaces = (Node,)
+        connection_field_factory = CustomField.factory
+```
+
+**Important:**
+  1. pagination (first/after, last/before) are performed by python (keep this in mind when working with large amounts of data)
+  1. nested filters work by dataloaders
+  1. this module optimizes one-to-many relationships, to optimize many-to-one relationships use [sqlalchemy_bulk_lazy_loader](https://github.com/operator/sqlalchemy_bulk_lazy_loader)
+  1. nested filters require `graphene_sqlalchemy>=2.1.2`
+
+
+### Example
+```python
+# Filters
+
+class UserFilter(FilterSet):
+   class Meta:
+       model = User
+       fields = {'is_active': [...]}
+       
+
+
+class CustomField(FilterableConnectionField):
+    filters = {
+        User: UserFilter(),
+    }
+
+
+# Nodes
+
+class UserNode(SQLAlchemyObjectType):
+    class Meta:
+        model = User
+        interfaces = (Node,)
+        connection_field_factory = CustomField.factory
+
+
+class GroupNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Group
+        interfaces = (Node,)
+        connection_field_factory = CustomField.factory
+
+
+# Connections
+
+class UserConnection(Connection):
+    class Meta:
+        node = UserNode
+
+
+class GroupConnection(Connection):
+    class Meta:
+        node = GroupNode
+
+
+# Query
+
+class Query(ObjectType):
+    all_users = CustomField(UserConnection)
+    all_groups = CustomField(GroupConnection)
+
+```
+
+```graphql
+{
+  allUsers (filters: {isActive: true}){
+    edges { node { id } }
+  }
+  allGroups {
+    edges {
+      node {
+        users (filters: {isActive: true}) {
+          edges { node { id } }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Rename GraphQL filter field
 
 ```python
 class CustomField(FilterableConnectionField):
     filter_arg = 'where'
-    
+
 
 class Query(ObjectType):
     all_users = CustomField(UserConnection, where=UserFilter())

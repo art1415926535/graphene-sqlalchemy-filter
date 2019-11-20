@@ -1,7 +1,7 @@
-# Database
 # Third Party
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 
+# Database
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship

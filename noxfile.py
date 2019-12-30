@@ -26,7 +26,7 @@ def test(session, graphene_sqlalchemy):
 
 @nox.session(python='3.7')
 def coverage(session):
-    session.install('pytest', 'pytest-cov')
+    session.install('pytest', 'pytest-cov', 'coverage<5.0.0')
     session.install('-e', '.')
     session.run(
         'pytest',

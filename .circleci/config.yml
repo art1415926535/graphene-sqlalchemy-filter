@@ -31,20 +31,20 @@ jobs:
     steps:
       - checkout
       - run:
-          name: install python dependencies
+          name: Create venv
           command: |
             python3 -m venv venv
-            . venv/bin/activate
-            pip install nox python-coveralls
       - run:
-          name: run tests
+          name: Run tests
           command: |
             . venv/bin/activate
+            pip install nox
             nox
       - run:
-          name: coveralls
+          name: Coveralls
           command: |
             . venv/bin/activate
+            pip install python-coveralls "coverage<5.0.0"
             coveralls
 
   deploy:

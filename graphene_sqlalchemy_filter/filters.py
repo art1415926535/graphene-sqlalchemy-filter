@@ -13,7 +13,7 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 from graphql import ResolveInfo
 
 # Database
-from sqlalchemy import and_, cast, not_, or_, types
+from sqlalchemy import and_, cast, inspection, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import aliased
@@ -500,12 +500,7 @@ class FilterSet(graphene.InputObjectType):
         """
         graphql_filters = {}
         filters_map = cls.ALLOWED_FILTERS
-
-        model_fields = {
-            c.name: {'column': c, 'type': c.type, 'nullable': c.nullable}
-            for c in model.__table__.columns
-            if c.name in field_filters
-        }
+        model_fields = cls._get_model_fields_data(model, field_filters.keys())
 
         for field_name, field_object in model_fields.items():
             column_type = field_object['type']
@@ -542,6 +537,35 @@ class FilterSet(graphene.InputObjectType):
                 )
 
         return graphql_filters
+
+    @classmethod
+    def _get_model_fields_data(cls, model, only_fields: 'Iterable[str]'):
+        """
+        Get model columns.
+
+        Args:
+            model: SQLAlchemy model.
+            only_fields: Filter of fields.
+
+        Returns:
+            Fields info.
+
+        """
+        model_fields = {}
+
+        for attr in inspection.inspect(model).column_attrs:
+            name = attr.key
+            if name not in only_fields:
+                continue
+
+            column = attr.columns[0]
+            model_fields[name] = {
+                'column': column,
+                'type': column.type,
+                'nullable': column.nullable,
+            }
+
+        return model_fields
 
     @classmethod
     def _generate_filter_fields(

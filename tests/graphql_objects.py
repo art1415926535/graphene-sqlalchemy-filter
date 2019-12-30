@@ -29,6 +29,7 @@ class BaseFilter(FilterSet):
 
 
 USER_FILTER_FIELDS = {
+    'id': ['eq'],
     'username': ['eq', 'ne', 'in', 'ilike'],
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
     'is_active': ['eq', 'ne'],

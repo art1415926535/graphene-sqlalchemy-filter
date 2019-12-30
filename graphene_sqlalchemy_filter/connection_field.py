@@ -181,8 +181,9 @@ class ModelLoader(dataloader.DataLoader):
         """
         model_pk_fields: 'Tuple[str]' = tuple(
             (
-                cast(str, key.name)
-                for key in inspection.inspect(model).primary_key
+                cast(str, name)
+                for name, c in inspection.inspect(model).columns.items()
+                if c.primary_key
             )
         )
         if len(model_pk_fields) != 1:

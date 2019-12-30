@@ -11,7 +11,7 @@ class Membership(Base):
     __tablename__ = 'member'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(ForeignKey('user.id'))
+    user_id = Column(ForeignKey('user.user_id'))
     group_id = Column(ForeignKey('group.id'))
     is_moderator = Column(Boolean, nullable=False, default=False)
 
@@ -21,7 +21,7 @@ class Membership(Base):
 class User(Base):
     __tablename__ = 'user'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column('user_id', Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)

@@ -13,7 +13,7 @@ from graphene_sqlalchemy_filter.connection_field import (
     NestedFilterableConnectionField,
     graphene_sqlalchemy_version_lt_2_1_2,
 )
-from tests.models import User
+from tests.models import Group, User
 
 
 @pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
@@ -24,7 +24,7 @@ def test_wrong_pk(info):
         id_2 = Column(Integer, primary_key=True)
 
     with pytest.raises(ModelNotSupported):
-        ModelLoader(TestModel, info, {})
+        ModelLoader(TestModel, TestModel, info, {})
 
 
 @pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
@@ -50,18 +50,18 @@ def test_model_dataloader_creation(info):
     )
 
     model_loader_1 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert isinstance(model_loader_1, ModelLoader)
 
     model_loader_2 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert model_loader_1 is model_loader_2
 
     info.path = ['user', 'edges', 0, 'node', 'anotherGroups']
     model_loader_3 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert model_loader_1 is not model_loader_3
 
@@ -79,17 +79,17 @@ def test_flask_context(info):
     )
 
     model_loader_1 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert isinstance(model_loader_1, ModelLoader)
 
     model_loader_2 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert model_loader_1 is model_loader_2
 
     info.path = ['user', 'edges', 0, 'node', 'anotherGroups']
     model_loader_3 = get_data_loader(
-        User(), info, {'filters': {'username': 'user_1'}}
+        User(), Group, info, {'filters': {'name': 'group_name'}}
     )
     assert model_loader_1 is not model_loader_3

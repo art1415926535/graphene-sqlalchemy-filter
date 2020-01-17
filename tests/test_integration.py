@@ -19,14 +19,29 @@ def add_users(session):
     return users
 
 
-def add_users_to_new_groups(session, users):
+def add_groups(session, with_parent_group=False):
+    parent_group_id = None
+
+    if with_parent_group:
+        parent_group = Group(name='parent')
+        session.add(parent_group)
+        session.flush()
+
+        parent_group_id = parent_group.id
+
     groups = [
-        Group(name='group_1'),
-        Group(name='group_2'),
-        Group(name='group_3'),
+        Group(name='group_1', parent_group_id=parent_group_id),
+        Group(name='group_2', parent_group_id=parent_group_id),
+        Group(name='group_3', parent_group_id=parent_group_id),
     ]
     session.bulk_save_objects(groups, return_defaults=True)
     session.flush()
+
+    return groups
+
+
+def add_users_to_new_groups(session, users):
+    groups = add_groups(session)
 
     memberships = [
         Membership(
@@ -255,3 +270,55 @@ def test_nested_response_with_filters(session):
     assert len(user_0_memberships_edges) == 1
     is_moderator_value = user_0_memberships_edges[0]['node']['isModerator']
     assert is_moderator_value is True
+
+
+@pytest.mark.skipif(
+    graphene_sqlalchemy_version_lt_2_1_2, reason='not supported'
+)
+def test_nested_response_with_recursive_model(session):
+    add_groups(session, with_parent_group=True)
+    session.commit()
+
+    request_string = """{
+            allGroups(filters:{parentGroupIdIsNull: true}){
+                edges{
+                    node{
+                        subGroups(
+                            filters: {
+                                or: [{name: "group_1"}, {name: "group_2"}]
+                            },
+                            sort: NAME_DESC
+                        ){
+                            edges{
+                                node{
+                                    name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }"""
+    with SQLAlchemyQueryCounter(session, 3):
+        execution_result = schema.execute(
+            request_string, context={'session': session}
+        )
+
+        assert not execution_result.errors
+        assert not execution_result.invalid
+
+        assert execution_result.data
+
+    assert 'allGroups' in execution_result.data
+
+    field = execution_result.data['allGroups']
+    assert 'edges' in field
+
+    edges = field['edges']
+    assert len(edges) == 1
+    group_0 = edges[0]['node']
+
+    group_0_sub_groups_edges = group_0['subGroups']['edges']
+    assert len(group_0_sub_groups_edges) == 2
+    sub_group_name = group_0_sub_groups_edges[0]['node']['name']
+    assert sub_group_name == 'group_2'

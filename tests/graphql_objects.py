@@ -94,7 +94,7 @@ class MembershipFilter(BaseFilter):
 class GroupFilter(BaseFilter):
     class Meta:
         model = Group
-        fields = {'name': [...]}
+        fields = {'name': [...], 'parent_group_id': ['is_null']}
 
 
 class MyFilterableConnectionField(FilterableConnectionField):
@@ -143,6 +143,7 @@ class GroupConnection(Connection):
 
 class Query(graphene.ObjectType):
     field = MyFilterableConnectionField(UserConnection)
+    all_groups = MyFilterableConnectionField(GroupConnection)
 
 
 schema = graphene.Schema(query=Query)

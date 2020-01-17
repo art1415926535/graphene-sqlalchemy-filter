@@ -10,7 +10,7 @@ from promise import Promise, dataloader
 
 # Database
 from sqlalchemy import inspection
-from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import Load, aliased, contains_eager
 
 
 MYPY = False
@@ -116,13 +116,18 @@ class ModelLoader(dataloader.DataLoader):
     filter_arg: str = DEFAULT_FILTER_ARG
 
     def __init__(
-        self, parent_model: 'Any', info: 'ResolveInfo', graphql_args: dict
+        self,
+        parent_model: 'Any',
+        model: 'Any',
+        info: 'ResolveInfo',
+        graphql_args: dict,
     ):
         """
         Dataloader for SQLAlchemy model relations.
 
         Args:
             parent_model: Parent SQLAlchemy model.
+            model: SQLAlchemy model.
             info: Graphene resolve info object.
             graphql_args: Request args: filters, sort, ...
 
@@ -131,6 +136,7 @@ class ModelLoader(dataloader.DataLoader):
         self.info: 'ResolveInfo' = info
         self.graphql_args: dict = graphql_args
 
+        self.model: 'Any' = model
         self.parent_model: 'Any' = parent_model
         self.parent_model_pk_field: str = self._get_model_pk_field_name(
             self.parent_model
@@ -236,20 +242,27 @@ class ModelLoader(dataloader.DataLoader):
             SQLAlchemy query.
 
         """
-        query = (
-            graphene_sqlalchemy.get_query(self.parent_model, self.info.context)
-            .join(self.relation)
-            .options(contains_eager(self.relation))
-        )
+        subquery = graphene_sqlalchemy.get_query(self.model, self.info.context)
 
         request_filters = self.graphql_args.get(self.filter_arg)
         if request_filters:
             filter_set = self._get_filter_set(self.info)
-            query = filter_set.filter(self.info, query, request_filters)
+            subquery = filter_set.filter(self.info, subquery, request_filters)
 
         sort = self.graphql_args.get('sort')
         if sort and isinstance(sort, list):
-            query = query.order_by(*(col.value for col in sort))
+            subquery = subquery.order_by(*(col.value for col in sort))
+
+        aliased_model = aliased(self.model, subquery.subquery())
+
+        query = (
+            graphene_sqlalchemy.get_query(self.parent_model, self.info.context)
+            .join(aliased_model, self.relation)
+            .options(
+                contains_eager(self.relation, alias=aliased_model),
+                Load(self.parent_model).load_only(self.parent_model_pk_field),
+            )
+        )
 
         return query
 
@@ -259,13 +272,14 @@ class NestedFilterableConnectionField(FilterableConnectionField):
 
     @classmethod
     def _get_or_create_data_loader(
-        cls, root: 'Any', info: 'ResolveInfo', args: dict
+        cls, root: 'Any', model: 'Any', info: 'ResolveInfo', args: dict
     ) -> ModelLoader:
         """
         Get or create (and save) dataloader from ResolveInfo
 
         Args:
             root: Parent model orm object.
+            model: SQLAlchemy model.
             info: Graphene resolve info object.
             args: Request args: filters, sort, ...
 
@@ -294,7 +308,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
         try:
             current_data_loader: ModelLoader = data_loaders[data_loader_key]
         except KeyError:
-            current_data_loader = ModelLoader(type(root), info, args)
+            current_data_loader = ModelLoader(type(root), model, info, args)
             data_loaders[data_loader_key] = current_data_loader
 
         return current_data_loader
@@ -325,7 +339,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
 
         """
         data_loader: ModelLoader = cls._get_or_create_data_loader(
-            root, info, kwargs
+            root, model, info, kwargs
         )
         root_pk_value: tuple = data_loader.parent_model_object_to_key(root)
         resolved: Promise = data_loader.load(root_pk_value)

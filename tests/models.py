@@ -46,5 +46,9 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True, index=True)
+    parent_group_id = Column(Integer, ForeignKey('group.id'))
 
     memberships = relationship('Membership', backref=backref('group'))
+    sub_groups = relationship(
+        'Group', backref=backref('parent_group', remote_side=[id])
+    )

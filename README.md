@@ -139,7 +139,7 @@ class UserFilter(FilterSet):
     is_moderator = graphene.Boolean()
 
     @classmethod
-    def is_admin_filter(cls, info, query, value):
+    def is_moderator_filter(cls, info, query, value):
         membership = cls.aliased(query, Membership, name='is_moderator')
   
         query = query.join(

@@ -142,7 +142,7 @@ class UserFilter(FilterSet):
     def is_moderator_filter(cls, info, query, value):
         membership = cls.aliased(query, Membership, name='is_moderator')
   
-        query = query.join(
+        query = query.outerjoin(
             membership,
             and_(
                 User.id == membership.user_id,

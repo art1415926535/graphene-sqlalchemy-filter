@@ -17,7 +17,12 @@ MYPY = False
 if MYPY:
     from typing import (
         Any,
+        Callable,
+        Dict,
         List,
+        Optional,
+        Tuple,
+        Type,
         Union,
     )  # noqa: F401; pragma: no cover
     from graphql import ResolveInfo  # noqa: F401; pragma: no cover
@@ -37,7 +42,7 @@ else:
     from graphene_sqlalchemy.fields import default_connection_field_factory
 
 
-DEFAULT_FILTER_ARG = 'filters'
+DEFAULT_FILTER_ARG = 'filters'  # type: str
 
 
 class ModelNotSupported(Exception):
@@ -45,10 +50,10 @@ class ModelNotSupported(Exception):
 
 
 class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
-    filter_arg = DEFAULT_FILTER_ARG
+    filter_arg = DEFAULT_FILTER_ARG  # type: str
 
-    factory = None
-    filters = {}
+    factory = None  # type: Union[FilterableFieldFactory, Callable, None]
+    filters = {}  # type: dict
 
     def __init_subclass__(cls):
         if graphene_sqlalchemy_version_lt_2_1_2:
@@ -103,12 +108,12 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
         field_name = info.field_asts[0].name.value
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
-        filters = filters_type.graphene_type
+        filters = filters_type.graphene_type  # type: FilterSet
         return filters
 
 
 class ModelLoader(dataloader.DataLoader):
-    filter_arg = DEFAULT_FILTER_ARG
+    filter_arg = DEFAULT_FILTER_ARG  # type: str
 
     def __init__(
         self,
@@ -128,20 +133,20 @@ class ModelLoader(dataloader.DataLoader):
 
         """
         super().__init__()
-        self.info = info
-        self.graphql_args = graphql_args
+        self.info = info  # type: ResolveInfo
+        self.graphql_args = graphql_args  # type: dict
 
-        self.model = model
-        self.parent_model = parent_model
+        self.model = model # type: Any
+        self.parent_model = parent_model  # type: Any
         self.parent_model_pk_field = self._get_model_pk_field_name(
             self.parent_model
-        )
+        )  # type: str
 
-        self.model_relation_field = to_snake_case(self.info.field_name)
+        self.model_relation_field = to_snake_case(self.info.field_name)  # type: str
 
         self.relation = getattr(
             self.parent_model, self.model_relation_field
-        )
+        )  # type: Any
 
     def batch_load_fn(self, keys: 'List[Any]') -> Promise:
         """
@@ -156,14 +161,14 @@ class ModelLoader(dataloader.DataLoader):
         """
         query = self._get_query().filter(
             getattr(self.parent_model, self.parent_model_pk_field).in_(keys)
-        )
+        )  # type: Query
 
         objects = {
             self.parent_model_object_to_key(parent_object): getattr(
                 parent_object, self.model_relation_field
             )
             for parent_object in query
-        }
+        } # type: Dict[tuple, Any]
         return Promise.resolve(
             [objects.get(object_id, []) for object_id in keys]
         )
@@ -186,7 +191,7 @@ class ModelLoader(dataloader.DataLoader):
                 for name, c in inspection.inspect(model).columns.items()
                 if c.primary_key
             )
-        )
+        ) # type: Tuple[str]
         if len(model_pk_fields) != 1:
             raise ModelNotSupported(
                 'The number of primary keys must be equal to 1 '
@@ -195,7 +200,7 @@ class ModelLoader(dataloader.DataLoader):
                 )
             )
 
-        model_pk_field = model_pk_fields[0]
+        model_pk_field = model_pk_fields[0]  # type: str
         return model_pk_field
 
     def parent_model_object_to_key(self, parent_object: 'Any') -> 'Any':
@@ -226,7 +231,7 @@ class ModelLoader(dataloader.DataLoader):
         field_name = info.field_asts[0].name.value
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
-        filters = filters_type.graphene_type
+        filters = filters_type.graphene_type  # type: FilterSet
         return filters
 
     def _get_query(self) -> 'Query':
@@ -263,7 +268,7 @@ class ModelLoader(dataloader.DataLoader):
 
 
 class NestedFilterableConnectionField(FilterableConnectionField):
-    dataloaders_field = '_sqla_filter_dataloaders'
+    dataloaders_field = '_sqla_filter_dataloaders'  # type: str
 
     @classmethod
     def _get_or_create_data_loader(
@@ -282,7 +287,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
             Dataloader for SQLAlchemy model.
 
         """
-        context = info.context
+        context = info.context  # type: Union[dict, object]
 
         if isinstance(context, dict):
             try:
@@ -301,7 +306,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
         data_loader_key = tuple((p for p in info.path if isinstance(p, str)))
 
         try:
-            current_data_loader = data_loaders[data_loader_key]
+            current_data_loader = data_loaders[data_loader_key]  # type: ModelLoader
         except KeyError:
             current_data_loader = ModelLoader(type(root), model, info, args)
             data_loaders[data_loader_key] = current_data_loader
@@ -335,9 +340,9 @@ class NestedFilterableConnectionField(FilterableConnectionField):
         """
         data_loader = cls._get_or_create_data_loader(
             root, model, info, kwargs
-        )
-        root_pk_value = data_loader.parent_model_object_to_key(root)
-        resolved = data_loader.load(root_pk_value)
+        )  # type: ModelLoader
+        root_pk_value = data_loader.parent_model_object_to_key(root)  # type: tuple
+        resolved = data_loader.load(root_pk_value)  # type: Promise
 
         on_resolve = partial(
             cls.resolve_connection, connection_type, model, info, kwargs
@@ -346,10 +351,10 @@ class NestedFilterableConnectionField(FilterableConnectionField):
 
 
 class FilterableFieldFactory:
-    model_loader_class = ModelLoader
+    model_loader_class = ModelLoader  # type: Type[ModelLoader]
     field_class = (
         NestedFilterableConnectionField
-    )
+    )  # type: Type[NestedFilterableConnectionField]
 
     def __init__(self, model_filters: dict):
         self.model_filters = model_filters
@@ -372,7 +377,7 @@ class FilterableFieldFactory:
         model = relationship.mapper.entity
         model_type = registry.get_type_for_model(model)
 
-        filters = self.model_filters.get(model)
+        filters = self.model_filters.get(model)  # type: Optional[FilterSet]
 
         if filters is not None:
             field_kwargs.setdefault(

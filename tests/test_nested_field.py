@@ -1,30 +1,56 @@
+# Standard Library
+import sqlite3
+from collections import namedtuple
+
 # Third Party
 import pytest
-
-# Database
-from sqlalchemy import Column, Integer
-from sqlalchemy.ext.declarative import declarative_base
 
 # Project
 from graphene_sqlalchemy_filter.connection_field import (
     FilterableConnectionField,
     ModelLoader,
-    ModelNotSupported,
     NestedFilterableConnectionField,
     graphene_sqlalchemy_version_lt_2_1_2,
 )
-from tests.models import Group, User
+
+# This module
+from .models import Article, Author, Group, User
 
 
 @pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
-def test_wrong_pk(info):
-    class TestModel(declarative_base()):
-        __tablename__ = 'test_model'
-        id_1 = Column(Integer, primary_key=True)
-        id_2 = Column(Integer, primary_key=True)
+@pytest.mark.skipif(
+    # https://stackoverflow.com/questions/45335276/sqlite-select-query-including-a-values-in-the-where-clause-returns-correctly-w
+    sqlite3.sqlite_version_info < (3, 15, 2),
+    reason='requires sqlite 3.15.2 or higher',
+)
+def test_composite_pk(info, session):
+    info.path = ['author']
+    info.field_name = 'articles'
+    info.context = {'session': session}
 
-    with pytest.raises(ModelNotSupported):
-        ModelLoader(TestModel, TestModel, info, {})
+    author = Author(first_name='Ally', last_name="A")
+    session.add(author)
+    article_1 = Article(
+        author_first_name=author.first_name,
+        author_last_name=author.last_name,
+        text='abc',
+    )
+    article_2 = Article(
+        author_first_name=author.first_name,
+        author_last_name=author.last_name,
+        text='123',
+    )
+    session.bulk_save_objects([article_1, article_2])
+    session.commit()
+
+    sorting = namedtuple('SORT', ['value'])
+    ml = ModelLoader(Author, Article, info, {'sort': [sorting('text')]})
+    assert set(ml.parent_model_pks) == {'first_name', 'last_name'}
+
+    key = ml.parent_model_object_to_key(author)
+    a1, a2 = ml.load(key).get()
+    assert a1.text == '123'
+    assert a2.text == 'abc'
 
 
 @pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')

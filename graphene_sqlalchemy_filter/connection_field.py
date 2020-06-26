@@ -9,7 +9,7 @@ from graphene.utils.str_converters import to_snake_case
 from promise import Promise, dataloader
 
 # Database
-from sqlalchemy import inspection
+from sqlalchemy import inspection, tuple_
 from sqlalchemy.orm import Load, aliased, contains_eager
 
 
@@ -43,10 +43,6 @@ else:
 
 
 DEFAULT_FILTER_ARG: str = 'filters'
-
-
-class ModelNotSupported(Exception):
-    pass
 
 
 class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
@@ -138,8 +134,11 @@ class ModelLoader(dataloader.DataLoader):
 
         self.model: 'Any' = model
         self.parent_model: 'Any' = parent_model
-        self.parent_model_pk_field: str = self._get_model_pk_field_name(
+        self.parent_model_pks: 'Tuple[str, ...]' = self._get_model_pks(
             self.parent_model
+        )
+        self.parent_model_pk_fields: tuple = tuple(
+            getattr(self.parent_model, pk) for pk in self.parent_model_pks
         )
 
         self.model_relation_field: str = to_snake_case(self.info.field_name)
@@ -148,7 +147,7 @@ class ModelLoader(dataloader.DataLoader):
             self.parent_model, self.model_relation_field
         )
 
-    def batch_load_fn(self, keys: 'List[Any]') -> Promise:
+    def batch_load_fn(self, keys: 'List[tuple]') -> Promise:
         """
         Load related objects.
 
@@ -159,8 +158,15 @@ class ModelLoader(dataloader.DataLoader):
             Lists of related orm objects.
 
         """
+        if len(self.parent_model_pk_fields) == 1:
+            left_hand_side = self.parent_model_pk_fields[0]
+            right_hand_side = [k[0] for k in keys]
+        else:
+            left_hand_side = tuple_(*self.parent_model_pk_fields)
+            right_hand_side = keys
+
         query: 'Query' = self._get_query().filter(
-            getattr(self.parent_model, self.parent_model_pk_field).in_(keys)
+            left_hand_side.in_(right_hand_side)
         )
 
         objects: 'Dict[tuple, Any]' = {
@@ -174,7 +180,7 @@ class ModelLoader(dataloader.DataLoader):
         )
 
     @staticmethod
-    def _get_model_pk_field_name(model) -> str:
+    def _get_model_pks(model) -> 'Tuple[str, ...]':
         """
         Get primary key field name.
 
@@ -192,16 +198,7 @@ class ModelLoader(dataloader.DataLoader):
                 if c.primary_key
             )
         )
-        if len(model_pk_fields) != 1:
-            raise ModelNotSupported(
-                'The number of primary keys must be equal to 1 '
-                'but {} were given. Model: {}.'.format(
-                    len(model_pk_fields), model
-                )
-            )
-
-        model_pk_field: str = model_pk_fields[0]
-        return model_pk_field
+        return model_pk_fields
 
     def parent_model_object_to_key(self, parent_object: 'Any') -> 'Any':
         """
@@ -214,7 +211,8 @@ class ModelLoader(dataloader.DataLoader):
             Primary key value.
 
         """
-        return getattr(parent_object, self.parent_model_pk_field)
+        key = tuple(getattr(parent_object, pk) for pk in self.parent_model_pks)
+        return key
 
     @classmethod
     def _get_filter_set(cls, info: 'ResolveInfo') -> 'FilterSet':
@@ -260,7 +258,7 @@ class ModelLoader(dataloader.DataLoader):
             .join(aliased_model, self.relation)
             .options(
                 contains_eager(self.relation, alias=aliased_model),
-                Load(self.parent_model).load_only(self.parent_model_pk_field),
+                Load(self.parent_model).load_only(*self.parent_model_pks),
             )
         )
 

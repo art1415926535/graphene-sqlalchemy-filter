@@ -1,5 +1,12 @@
 # Database
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    Column,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
 
@@ -52,3 +59,30 @@ class Group(Base):
     sub_groups = relationship(
         'Group', backref=backref('parent_group', remote_side=[id])
     )
+
+
+class Author(Base):
+    __tablename__ = 'author'
+
+    first_name = Column(String(50), primary_key=True)
+    last_name = Column(String(50), primary_key=True)
+
+    articles = relationship('Article', back_populates='author')
+
+
+class Article(Base):
+    __tablename__ = 'article'
+
+    id = Column(Integer, primary_key=True)
+    text = Column(String(500))
+    author_first_name = Column(String(50))
+    author_last_name = Column(String(50))
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ('author_first_name', 'author_last_name'),
+            ('author.first_name', 'author.last_name'),
+        ),
+    )
+
+    author = relationship('Author', back_populates='articles')

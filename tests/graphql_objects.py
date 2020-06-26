@@ -10,7 +10,7 @@ from sqlalchemy import Integer, and_
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
 
 # This module
-from .models import Group, Membership, User
+from .models import Article, Author, Group, Membership, User
 
 
 class BaseFilter(FilterSet):
@@ -97,11 +97,31 @@ class GroupFilter(BaseFilter):
         fields = {'name': [...], 'parent_group_id': ['is_null']}
 
 
+class ArticleFilter(FilterSet):
+    class Meta:
+        model = Article
+        fields = {
+            'author_first': [...],
+            'author_last': [...],
+        }
+
+
+class AuthorFilter(FilterSet):
+    class Meta:
+        model = Author
+        fields = {
+            'author_first': [...],
+            'author_last': [...],
+        }
+
+
 class MyFilterableConnectionField(FilterableConnectionField):
     filters = {
         User: UserFilter(),
         Membership: MembershipFilter(),
         Group: GroupFilter(),
+        Article: ArticleFilter(),
+        Author: AuthorFilter(),
     }
 
 
@@ -141,9 +161,35 @@ class GroupConnection(Connection):
         node = GroupNode
 
 
+class AuthorNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Author
+        interfaces = (graphene.relay.Node,)
+        connection_field_factory = MyFilterableConnectionField.factory
+
+
+class AuthorConnection(Connection):
+    class Meta:
+        node = AuthorNode
+
+
+class ArticleNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Article
+        interfaces = (graphene.relay.Node,)
+        connection_field_factory = MyFilterableConnectionField.factory
+
+
+class ArticleConnection(Connection):
+    class Meta:
+        node = ArticleNode
+
+
 class Query(graphene.ObjectType):
     field = MyFilterableConnectionField(UserConnection)
     all_groups = MyFilterableConnectionField(GroupConnection)
+    all_authors = MyFilterableConnectionField(AuthorConnection)
+    all_articles = MyFilterableConnectionField(ArticleConnection)
 
 
 schema = graphene.Schema(query=Query)

@@ -6,7 +6,7 @@ from graphene_sqlalchemy.utils import EnumValue
 
 # Project
 from graphene_sqlalchemy_filter import FilterSet
-from tests import models
+from tests import gqls_version, models
 from tests.graphql_objects import Query, UserFilter
 
 
@@ -41,6 +41,17 @@ def test_filters(info_and_user_query):
         'lower("user".username) LIKE lower(:username_1) '
         'AND "user".balance > :balance_1'
     )
+    where_clause = str(query.whereclause)
+    assert where_clause == ok
+
+
+@pytest.mark.skipif(gqls_version < (2, 2, 0), reason='not supported')
+def test_enum(info_and_user_query):
+    info, user_query = info_and_user_query
+    filters = {'status': 'ONLINE'}
+    query = UserFilter.filter(info, user_query, filters)
+
+    ok = '"user".status = :status_1'
     where_clause = str(query.whereclause)
     assert where_clause == ok
 

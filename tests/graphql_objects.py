@@ -8,6 +8,7 @@ from sqlalchemy import Integer, and_
 
 # Project
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
+from tests import gqls_version
 
 # This module
 from .models import Article, Author, Group, Membership, User
@@ -34,6 +35,10 @@ USER_FILTER_FIELDS = {
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
     'is_active': ['eq', 'ne'],
 }
+
+
+if gqls_version >= (2, 2, 0):
+    USER_FILTER_FIELDS['status'] = ['eq']
 
 
 class UserFilter(BaseFilter):

@@ -1,7 +1,11 @@
+# Standard Library
+import enum
+
 # Database
 from sqlalchemy import (
     Boolean,
     Column,
+    Enum,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -9,6 +13,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
+
+# Project
+from tests import gqls_version
 
 
 Base = declarative_base()
@@ -25,6 +32,11 @@ class Membership(Base):
     creator_username = Column(ForeignKey('user.username'))
 
 
+class StatusEnum(enum.Enum):
+    offline = 'offline'
+    online = 'online'
+
+
 class User(Base):
     __tablename__ = 'user'
 
@@ -32,6 +44,8 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
+    if gqls_version >= (2, 2, 0):
+        status = Column(Enum(StatusEnum), default='offline')
 
     memberships = relationship(
         'Membership',

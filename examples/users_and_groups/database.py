@@ -16,7 +16,7 @@ Base.query = db_session.query_property()
 
 def add_users():
     users = [
-        User(username='Ally', is_active=True),
+        User(username='Ally', is_active=True, status='online'),
         User(username='Blayze', is_active=True, balance=0),
         User(username='Courtney', is_active=False, balance=100),
         User(username='Delmer', is_active=True, balance=9000),

@@ -1,8 +1,11 @@
+# Standard Library
+import enum
+
 # Third Party
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 
 # Database
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship
 
@@ -11,6 +14,11 @@ BulkLazyLoader.register_loader()
 
 
 Base = declarative_base()
+
+
+class StatusEnum(enum.Enum):
+    offline = 'offline'
+    online = 'online'
 
 
 class Membership(Base):
@@ -30,6 +38,7 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
+    status = Column(Enum(StatusEnum), default='offline')
 
     memberships = relationship(
         'Membership',

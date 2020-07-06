@@ -585,12 +585,16 @@ class FilterSet(graphene.InputObjectType):
         """
         if gqls_version < (2, 2, 0):
             # https://github.com/graphql-python/graphene-sqlalchemy/blob/v2.1.2/graphene_sqlalchemy/converter.py#L147
-            return isinstance(obj, graphene.Field) and isinstance(
+            return isinstance(
+                obj, graphene.Field
+            ) and isinstance(  # pragma: no cover
                 obj._type, graphene.types.enum.EnumMeta
             )
         elif gqls_version == (2, 2, 0):
             # https://github.com/graphql-python/graphene-sqlalchemy/blob/db3e9f4c3baad3e62c113d4a9ddd2e3983d324f2/graphene_sqlalchemy/converter.py#L150
-            return isinstance(obj, graphene.Field) and callable(obj._type)
+            return isinstance(obj, graphene.Field) and callable(
+                obj._type
+            )  # pragma: no cover
         else:
             # https://github.com/graphql-python/graphene-sqlalchemy/blob/17d535efba03070cbc505d915673e0f24d9ca60c/graphene_sqlalchemy/converter.py#L216
             return callable(obj) and obj.__name__ == '<lambda>'
@@ -612,13 +616,13 @@ class FilterSet(graphene.InputObjectType):
         if gqls_version < (2, 2, 0):
             # AssertionError: Found different types
             # with the same name in the schema: ...
-            raise AssertionError(
+            raise AssertionError(  # pragma: no cover
                 'Enum is not supported. '
                 'Requires graphene-sqlalchemy 2.2.0 or higher.'
             )
         elif gqls_version == (2, 2, 0):
             # https://github.com/graphql-python/graphene-sqlalchemy/compare/2.1.2...2.2.0#diff-9202780f6bf4790a0d960de553c086f1L155
-            return enum._type()()
+            return enum._type()()  # pragma: no cover
         else:
             # https://github.com/graphql-python/graphene-sqlalchemy/compare/2.2.0...2.2.1#diff-9202780f6bf4790a0d960de553c086f1L150
             return enum()()

@@ -1,9 +1,11 @@
 # Standard Library
 import sqlite3
-from collections import namedtuple
 
 # Third Party
 import pytest
+
+# GraphQL
+from graphene_sqlalchemy.utils import EnumValue
 
 # Project
 from graphene_sqlalchemy_filter.connection_field import (
@@ -43,8 +45,8 @@ def test_composite_pk(info, session):
     session.bulk_save_objects([article_1, article_2])
     session.commit()
 
-    sorting = namedtuple('SORT', ['value'])
-    ml = ModelLoader(Author, Article, info, {'sort': [sorting('text')]})
+    sorting = EnumValue('TEXT_ASC', Article.text.asc())
+    ml = ModelLoader(Author, Article, info, {'sort': [sorting]})
     assert set(ml.parent_model_pks) == {'first_name', 'last_name'}
 
     key = ml.parent_model_object_to_key(author)

@@ -6,12 +6,12 @@ tests = 'tests'
 dirs = [module, tests]
 
 
-@nox.session(python='3.6')
+@nox.session(python='3.7')
 def lint(session):
-    session.install('flake8', 'black', 'isort')
+    session.install('flake8', 'black', 'isort==4.3.21')
 
     session.run('black', '--check', '-l', '79', '-S', *dirs)
-    session.run('isort', '--check-only', '-rc', *dirs)
+    session.run('isort', '--check-only', *dirs)
     session.run('flake8', '--show-source', '--statistics', *dirs)
 
 

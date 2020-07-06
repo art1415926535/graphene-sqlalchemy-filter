@@ -247,10 +247,6 @@ class ModelLoader(dataloader.DataLoader):
             filter_set = self._get_filter_set(self.info)
             subquery = filter_set.filter(self.info, subquery, request_filters)
 
-        sort = self.graphql_args.get('sort')
-        if sort and isinstance(sort, list):
-            subquery = subquery.order_by(*(col.value for col in sort))
-
         aliased_model = aliased(self.model, subquery.subquery())
 
         query = (
@@ -261,7 +257,28 @@ class ModelLoader(dataloader.DataLoader):
                 Load(self.parent_model).load_only(*self.parent_model_pks),
             )
         )
+        query = self._sorted_query(
+            query, self.graphql_args.get('sort'), aliased_model
+        )
+        return query
 
+    def _sorted_query(
+        self, query: 'Query', sort: 'Optional[list]', by_model: 'Any'
+    ) -> 'Query':
+        """Sort query."""
+        order = []
+        for s in sort:
+            sort_field_name = s.value
+            if not isinstance(sort_field_name, str):
+                sort_field_name = sort_field_name.element.name
+            sort_field = getattr(by_model, sort_field_name)
+            if s.endswith('_ASC'):
+                sort_field = sort_field.asc()
+            elif s.endswith('_DESC'):
+                sort_field = sort_field.desc()
+            order.append(sort_field)
+
+        query = query.order_by(*order)
         return query
 
 

@@ -13,7 +13,7 @@ Base.query = db_session.query_property()
 
 def add_users():
     users = [
-        User(username='Ally'),
+        User(username='Ally', type="human"),
         User(username='Blayze', balance=0),
         User(username='Courtney', balance=100),
         User(username='Delmer', balance=9000),

@@ -18,3 +18,4 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
+    type = Column(String, nullable=True)

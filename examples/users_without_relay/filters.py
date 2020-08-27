@@ -22,4 +22,5 @@ class UserFilter(FilterSet):
         fields = {
             'username': ['eq', 'ne', 'in', 'ilike'],
             'balance': [...],
+            'type': [...],
         }

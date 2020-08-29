@@ -19,6 +19,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.query import Query
+from sqlalchemy.sql import sqltypes
 
 
 MYPY = False
@@ -786,9 +787,15 @@ class FilterSet(graphene.InputObjectType):
         filter_function = cls.FILTER_FUNCTIONS[expression]
 
         try:
-            clause = filter_function(getattr(cls.model, field), value)
+            model_field = getattr(cls.model, field)
         except AttributeError:
             raise KeyError('Field not found: ' + field)
+
+        model_field_type = model_field.type
+        if isinstance(model_field_type, sqltypes.Enum):
+            value = model_field_type.enum_class(value)
+
+        clause = filter_function(model_field, value)
         return query, clause
 
     @classmethod

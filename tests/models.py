@@ -45,7 +45,7 @@ class User(Base):
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
     if gqls_version >= (2, 2, 0):
-        status = Column(Enum(StatusEnum), default='offline')
+        status = Column(Enum(StatusEnum), default=StatusEnum.offline)
 
     memberships = relationship(
         'Membership',

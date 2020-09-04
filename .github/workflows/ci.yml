@@ -10,10 +10,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Python ${{ DEFAULT_PYTHON_VERSION }}
+      - name: Set up Python ${{ env.DEFAULT_PYTHON_VERSION }}
         uses: actions/setup-python@v1
         with:
-          python-version: ${{ DEFAULT_PYTHON_VERSION }}
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
       - name: Install nox
         run: |
           python -m pip install --upgrade pip
@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Python ${{ DEFAULT_PYTHON_VERSION }}
+      - name: Set up Python ${{ env.DEFAULT_PYTHON_VERSION }}
         uses: actions/setup-python@master
         with:
           python-version: {{ DEFAULT_PYTHON_VERSION }}

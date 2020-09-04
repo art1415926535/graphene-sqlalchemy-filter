@@ -1,7 +1,7 @@
 Graphene-SQLAlchemy-Filter
 ==========================
 
-|circle-ci| |coveralls| |pypi|
+|ci| |coveralls| |pypi|
 
 Filters for `Graphene SQLAlchemy integration <https://github.com/graphql-python/graphene-sqlalchemy>`__
 
@@ -465,8 +465,8 @@ If you do not use the shortcut, you can skip the next steps described in the sec
 
 
 .. |preview| image:: https://github.com/art1415926535/graphene-sqlalchemy-filter/blob/master/preview.gif?raw=true
-.. |circle-ci| image:: https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter.svg?style=svg
-   :target: https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter
+.. |ci| image:: https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg
+   :target: https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI
 .. |coveralls| image:: https://coveralls.io/repos/github/art1415926535/graphene-sqlalchemy-filter/badge.svg?branch=master
    :target: https://coveralls.io/github/art1415926535/graphene-sqlalchemy-filter?branch=master
 .. |pypi| image:: https://badge.fury.io/py/graphene-sqlalchemy-filter.svg

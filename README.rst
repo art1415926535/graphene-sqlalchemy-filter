@@ -91,7 +91,7 @@ Metaclass must contain the sqlalchemy model and fields.
 
 Automatically generated filters must be specified by ``fields`` variable. Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
 
-Shortcut (default: ``[...]``) will add all the allowed filters for this type of sqlalchemy field.
+Shortcut (default: ``[...]``) will add all the allowed filters for this type of sqlalchemy field (does not work with hybrid property).
 
 +--------------------+------------------------------------+-------------------+
 | Key                | Description                        | GraphQL postfix   |

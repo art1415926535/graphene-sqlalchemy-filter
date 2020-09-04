@@ -15,7 +15,7 @@ def lint(session):
     session.run('flake8', '--show-source', '--statistics', *dirs)
 
 
-@nox.session(python=['3.6', '3.7'])
+@nox.session(python=['3.6', '3.7', '3.8'])
 @nox.parametrize("graphene_sqlalchemy", ['==2.1.0', '==2.2.0', '==2.2.1'])
 def test(session, graphene_sqlalchemy):
     session.install('pytest')

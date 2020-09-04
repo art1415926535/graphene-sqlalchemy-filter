@@ -841,6 +841,7 @@ class FilterSet(graphene.InputObjectType):
         clause = filter_function(model_field, value)
         return query, clause
 
+
     @classmethod
     def _translate_many_filter(
         cls,

@@ -58,8 +58,6 @@ jobs:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         run: |
           pip install -e .
-          pip install pytest
-          pip install "coverage<5.0.0"
-          pip install pytest-cov
-          pytest --cov=graphene_sqlalchemy_filter --cov-report=xml tests
+          pip install pytest "coverage<5.0.0" pytest-cov "coveralls==1.10.0"
+          pytest --cov=graphene_sqlalchemy_filter tests
           coveralls

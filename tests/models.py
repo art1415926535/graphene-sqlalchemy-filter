@@ -10,8 +10,10 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Integer,
     String,
+    func,
 )
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship
 
 # Project
@@ -46,6 +48,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     if gqls_version >= (2, 2, 0):
         status = Column(Enum(StatusEnum), default=StatusEnum.offline)
+
+    @hybrid_property
+    def username_hybrid_property(self):
+        return func.lower(self.username)
 
     memberships = relationship(
         'Membership',

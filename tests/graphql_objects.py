@@ -34,6 +34,7 @@ USER_FILTER_FIELDS = {
     'username': ['eq', 'ne', 'in', 'ilike'],
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
     'is_active': ['eq', 'ne'],
+    'username_hybrid_property': ['eq', 'ne', 'in'],
 }
 
 

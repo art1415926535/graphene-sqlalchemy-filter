@@ -58,6 +58,6 @@ jobs:
           pip install pytest
           pip install "coverage<5.0.0"
           pip install pytest-cov
-          pytest --cov=graphene_sqlalchemy_filter term-missing --cov-report=xml
+          pytest --cov=graphene_sqlalchemy_filter --cov-report=xml tests
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

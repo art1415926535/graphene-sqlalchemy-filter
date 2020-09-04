@@ -54,11 +54,12 @@ jobs:
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
       - name: Generate coverage report
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         run: |
           pip install -e .
           pip install pytest
           pip install "coverage<5.0.0"
           pip install pytest-cov
           pytest --cov=graphene_sqlalchemy_filter --cov-report=xml tests
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+          coveralls

@@ -42,10 +42,6 @@ jobs:
       - name: Test
         run: |
           nox -s test -p ${{ matrix.python-version }}
-      - name: Test with pytest
-        run: pytest --cov=./ --cov-report=xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v1
 
   coverage:
     name: Coverage
@@ -60,7 +56,7 @@ jobs:
       - name: Generate coverage report
         run: |
           pip install pytest
-          pip install coverage<5.0.0
+          pip install "coverage<5.0.0"
           pip install pytest-cov
           pytest --cov=graphene_sqlalchemy_filter term-missing --cov-report=xml
       - name: Upload coverage to Codecov

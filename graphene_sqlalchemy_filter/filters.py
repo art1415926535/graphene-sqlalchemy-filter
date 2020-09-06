@@ -66,7 +66,7 @@ def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
 
 
 def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
-    column_type = field.type
+    column_type = getattr(field, 'type', None)
     if isinstance(column_type, postgresql.ARRAY):
         value = cast(value, column_type)
 
@@ -834,7 +834,7 @@ class FilterSet(graphene.InputObjectType):
         except AttributeError:
             raise KeyError('Field not found: ' + field)
 
-        model_field_type = model_field.type
+        model_field_type = getattr(model_field, 'type', None)
         if isinstance(model_field_type, sqltypes.Enum):
             value = model_field_type.enum_class(value)
 

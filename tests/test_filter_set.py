@@ -320,3 +320,13 @@ def test_sql_alchemy_wrong_column_types():
             class Meta:
                 model = models.User
                 fields = {'id': [...]}
+
+
+def test_sql_alchemy_wrong_field_type():
+    msg = r'Unsupported model field \(Membership\.user\) type'
+    with pytest.raises(TypeError, match=msg):
+
+        class TestFilter(FilterSet):
+            class Meta:
+                model = models.Membership
+                fields = {'user': ['eq']}

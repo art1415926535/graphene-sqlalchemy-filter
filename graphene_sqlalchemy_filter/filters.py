@@ -606,7 +606,12 @@ class FilterSet(graphene.InputObjectType):
                 if name not in only_fields:
                     continue
 
-                column = attr.columns[0]
+                try:
+                    column = attr.columns[0]
+                except (AttributeError, IndexError):
+                    raise TypeError(
+                        'Unsupported model field ({}) type'.format(descr)
+                    )
                 model_fields[name] = {
                     'column': column,
                     'type': column.type,

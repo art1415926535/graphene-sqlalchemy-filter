@@ -48,12 +48,14 @@ def test_filters(info_and_user_query):
 @pytest.mark.skipif(gqls_version < (2, 2, 0), reason='not supported')
 def test_enum(info_and_user_query):
     info, user_query = info_and_user_query
-    filters = {'status': 'ONLINE'}
+    filters = {'status': models.StatusEnum.online.value}
     query = UserFilter.filter(info, user_query, filters)
 
+    where_clause = query.whereclause
     ok = '"user".status = :status_1'
-    where_clause = str(query.whereclause)
-    assert where_clause == ok
+    assert str(where_clause) == ok
+
+    assert where_clause.right.effective_value == models.StatusEnum.online
 
 
 def test_custom_filter(info_and_user_query):

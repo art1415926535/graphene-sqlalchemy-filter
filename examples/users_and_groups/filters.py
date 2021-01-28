@@ -75,6 +75,7 @@ class UserFilter(BaseFilter):
             'is_active': ['eq', 'ne'],
             'balance': [...],
             'status': ['eq'],
+            'is_online': ['eq', 'ne'],
         }
 
 

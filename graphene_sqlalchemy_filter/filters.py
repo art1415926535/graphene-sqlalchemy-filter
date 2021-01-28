@@ -7,6 +7,7 @@ from functools import lru_cache
 
 # GraphQL
 import graphene
+from graphene.types.generic import GenericScalar
 from graphene.types.inputobjecttype import InputObjectTypeOptions
 from graphene.types.utils import get_field_as
 from graphene_sqlalchemy import __version__ as gqls_version
@@ -17,8 +18,11 @@ from graphql import ResolveInfo
 from sqlalchemy import and_, cast, inspection, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.query import Query
+from sqlalchemy.sql import sqltypes
 
 
 MYPY = False
@@ -62,7 +66,7 @@ def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
 
 
 def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
-    column_type = field.type
+    column_type = getattr(field, 'type', None)
     if isinstance(column_type, postgresql.ARRAY):
         value = cast(value, column_type)
 
@@ -511,6 +515,11 @@ class FilterSet(graphene.InputObjectType):
 
             expressions = field_filters[field_name]
             if expressions == cls.ALL:
+                if column_type is None:
+                    raise ValueError(
+                        'Unsupported field type for automatic filter binding'
+                    )
+
                 type_class = column_type.__class__
                 try:
                     expressions = filters_map[type_class].copy()
@@ -528,7 +537,7 @@ class FilterSet(graphene.InputObjectType):
                 if field_object['nullable']:
                     expressions.append(cls.IS_NULL)
 
-            field_type = convert_sqlalchemy_type(
+            field_type = cls._get_gql_type_from_sqla_type(
                 column_type, field_object['column']
             )
 
@@ -541,6 +550,26 @@ class FilterSet(graphene.InputObjectType):
                 )
 
         return graphql_filters
+
+    @classmethod
+    def _get_gql_type_from_sqla_type(
+        cls, column_type, sqla_column
+    ) -> 'Union[Type[graphene.ObjectType], Type[GenericScalar]]':
+        """
+        Get GraphQL type from SQLAlchemy column.
+
+        Args:
+            column_type: SQLAlchemy column type.
+            sqla_column: SQLAlchemy column or hybrid attribute.
+
+        Returns:
+            GraphQL type.
+
+        """
+        if column_type is None:
+            return GenericScalar
+        else:
+            return convert_sqlalchemy_type(column_type, sqla_column)
 
     @classmethod
     def _get_model_fields_data(cls, model, only_fields: 'Iterable[str]'):
@@ -557,17 +586,32 @@ class FilterSet(graphene.InputObjectType):
         """
         model_fields = {}
 
-        for attr in inspection.inspect(model).column_attrs:
-            name = attr.key
-            if name not in only_fields:
-                continue
+        inspected = inspection.inspect(model)
+        for descr in inspected.all_orm_descriptors:
+            if isinstance(descr, hybrid_property):
+                attr = descr
+                name = attr.__name__
+                if name not in only_fields:
+                    continue
 
-            column = attr.columns[0]
-            model_fields[name] = {
-                'column': column,
-                'type': column.type,
-                'nullable': column.nullable,
-            }
+                model_fields[name] = {
+                    'column': attr,
+                    'type': None,
+                    'nullable': True,
+                }
+
+            elif isinstance(descr, InstrumentedAttribute):
+                attr = descr.property
+                name = attr.key
+                if name not in only_fields:
+                    continue
+
+                column = attr.columns[0]
+                model_fields[name] = {
+                    'column': column,
+                    'type': column.type,
+                    'nullable': column.nullable,
+                }
 
         return model_fields
 
@@ -786,9 +830,15 @@ class FilterSet(graphene.InputObjectType):
         filter_function = cls.FILTER_FUNCTIONS[expression]
 
         try:
-            clause = filter_function(getattr(cls.model, field), value)
+            model_field = getattr(cls.model, field)
         except AttributeError:
             raise KeyError('Field not found: ' + field)
+
+        model_field_type = getattr(model_field, 'type', None)
+        if isinstance(model_field_type, sqltypes.Enum):
+            value = model_field_type.enum_class(value)
+
+        clause = filter_function(model_field, value)
         return query, clause
 
     @classmethod

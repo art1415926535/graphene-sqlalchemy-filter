@@ -7,6 +7,7 @@ from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 # Database
 from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship
 
 
@@ -39,6 +40,10 @@ class User(Base):
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
     status = Column(Enum(StatusEnum), default='offline')
+
+    @hybrid_property
+    def is_online(self):
+        return self.status == StatusEnum.online
 
     memberships = relationship(
         'Membership',

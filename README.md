@@ -1,6 +1,6 @@
 # Graphene-SQLAlchemy-Filter
 
-[![CircleCI](https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter.svg?style=svg)](https://circleci.com/gh/art1415926535/graphene-sqlalchemy-filter) [![Coverage Status](https://coveralls.io/repos/github/art1415926535/graphene-sqlalchemy-filter/badge.svg?branch=master)](https://coveralls.io/github/art1415926535/graphene-sqlalchemy-filter?branch=master) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
+[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI) [![Coverage Status](https://coveralls.io/repos/github/art1415926535/graphene-sqlalchemy-filter/badge.svg?branch=master)](https://coveralls.io/github/art1415926535/graphene-sqlalchemy-filter?branch=master) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
 
 Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/graphene-sqlalchemy)
 
@@ -86,7 +86,7 @@ Metaclass must contain the sqlalchemy model and fields.
 Automatically generated filters must be specified by `fields` variable. 
 Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
 
-Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field.
+Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field (does not work with hybrid property).
 
 | Key            | Description                     | GraphQL postfix |
 |----------------|---------------------------------|-----------------|

@@ -4,7 +4,6 @@ import inspect
 import warnings
 from copy import deepcopy
 from functools import lru_cache
-from inspect import isfunction
 
 # GraphQL
 import graphene
@@ -63,7 +62,10 @@ def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
     if inspect.isclass(obj):
         return obj
 
-    return obj.__class__  # only graphene-sqlalchemy<=2.2.0; pragma: no cover
+    if isinstance(obj, graphene.Field):  # only graphene-sqlalchemy==2.2.0
+        return obj.type
+
+    return obj.__class__  # only graphene-sqlalchemy<2.2.0; pragma: no cover
 
 
 def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
@@ -571,10 +573,9 @@ class FilterSet(graphene.InputObjectType):
             return GenericScalar
         else:
             _type = convert_sqlalchemy_type(column_type, sqla_column)
-            if isfunction(_type):
-                return _type()
+            if inspect.isfunction(_type):
+                return _type()  # only graphene-sqlalchemy>2.2.0
             return _type
-
 
     @classmethod
     def _get_model_fields_data(cls, model, only_fields: 'Iterable[str]'):
@@ -620,62 +621,6 @@ class FilterSet(graphene.InputObjectType):
 
         return model_fields
 
-    @staticmethod
-    def _is_graphene_enum(obj: 'Any') -> bool:
-        """
-        Return whether 'obj' is a enum.
-
-        Args:
-            obj: lambda or graphene.Field
-
-        Returns:
-            boolean
-
-        """
-        if gqls_version < (2, 2, 0):
-            # https://github.com/graphql-python/graphene-sqlalchemy/blob/v2.1.2/graphene_sqlalchemy/converter.py#L147
-            return isinstance(
-                obj, graphene.Field
-            ) and isinstance(  # pragma: no cover
-                obj._type, graphene.types.enum.EnumMeta
-            )
-        elif gqls_version == (2, 2, 0):
-            # https://github.com/graphql-python/graphene-sqlalchemy/blob/db3e9f4c3baad3e62c113d4a9ddd2e3983d324f2/graphene_sqlalchemy/converter.py#L150
-            return isinstance(obj, graphene.Field) and callable(
-                obj._type
-            )  # pragma: no cover
-        else:
-            # https://github.com/graphql-python/graphene-sqlalchemy/blob/17d535efba03070cbc505d915673e0f24d9ca60c/graphene_sqlalchemy/converter.py#L216
-            return callable(obj) and obj.__name__ == '<lambda>'
-
-    @staticmethod
-    def _get_enum_from_field(
-        enum: 'Union[Callable, graphene.Field]',
-    ) -> graphene.Enum:
-        """
-        Get graphene enum.
-
-        Args:
-            enum: lambda or graphene.Field
-
-        Returns:
-            Graphene enum.
-
-        """
-        if gqls_version < (2, 2, 0):
-            # AssertionError: Found different types
-            # with the same name in the schema: ...
-            raise AssertionError(  # pragma: no cover
-                'Enum is not supported. '
-                'Requires graphene-sqlalchemy 2.2.0 or higher.'
-            )
-        elif gqls_version == (2, 2, 0):
-            # https://github.com/graphql-python/graphene-sqlalchemy/compare/2.1.2...2.2.0#diff-9202780f6bf4790a0d960de553c086f1L155
-            return enum._type()()  # pragma: no cover
-        else:
-            # https://github.com/graphql-python/graphene-sqlalchemy/compare/2.2.0...2.2.1#diff-9202780f6bf4790a0d960de553c086f1L150
-            return enum()()
-
     @classmethod
     def _generate_filter_fields(
         cls,
@@ -713,8 +658,6 @@ class FilterSet(graphene.InputObjectType):
             except KeyError:
                 if isinstance(field_type, graphene.List):
                     filter_field = field_type
-                elif cls._is_graphene_enum(field_type):
-                    filter_field = cls._get_enum_from_field(field_type)
                 else:
                     field_type = _get_class(field_type)
                     filter_field = field_type(description=doc)
@@ -840,8 +783,12 @@ class FilterSet(graphene.InputObjectType):
             raise KeyError('Field not found: ' + field)
 
         model_field_type = getattr(model_field, 'type', None)
-        if isinstance(model_field_type, sqltypes.Enum) and model_field_type.enum_class:
-            value = model_field_type.enum_class(value)
+        is_enum = isinstance(model_field_type, sqltypes.Enum)
+        if is_enum and model_field_type.enum_class:
+            if isinstance(value, list):
+                value = [model_field_type.enum_class(v) for v in value]
+            else:
+                value = model_field_type.enum_class(value)
 
         clause = filter_function(model_field, value)
         return query, clause

@@ -4,6 +4,7 @@ import inspect
 import warnings
 from copy import deepcopy
 from functools import lru_cache
+from inspect import isfunction
 
 # GraphQL
 import graphene
@@ -569,7 +570,11 @@ class FilterSet(graphene.InputObjectType):
         if column_type is None:
             return GenericScalar
         else:
-            return convert_sqlalchemy_type(column_type, sqla_column)
+            _type = convert_sqlalchemy_type(column_type, sqla_column)
+            if isfunction(_type):
+                return _type()
+            return _type
+
 
     @classmethod
     def _get_model_fields_data(cls, model, only_fields: 'Iterable[str]'):
@@ -835,7 +840,7 @@ class FilterSet(graphene.InputObjectType):
             raise KeyError('Field not found: ' + field)
 
         model_field_type = getattr(model_field, 'type', None)
-        if isinstance(model_field_type, sqltypes.Enum):
+        if isinstance(model_field_type, sqltypes.Enum) and model_field_type.enum_class:
             value = model_field_type.enum_class(value)
 
         clause = filter_function(model_field, value)

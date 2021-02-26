@@ -46,6 +46,7 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
+    assignments = relationship('Assignment', back_populates='user')
     if gqls_version >= (2, 2, 0):
         status = Column(Enum(StatusEnum), default=StatusEnum.offline)
 
@@ -106,3 +107,22 @@ class Article(Base):
     )
 
     author = relationship('Author', back_populates='articles')
+
+
+class Task(Base):
+    __tablename__ = 'task'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(32))
+    assignments = relationship('Assignment', back_populates='task')
+
+
+class Assignment(Base):
+    __tablename__ = 'assignment'
+
+    task_id = Column(Integer, ForeignKey('task.id'), primary_key=True)
+    task = relationship('Task', back_populates='assignments')
+    user_id = Column(Integer, ForeignKey('user.user_id'), primary_key=True)
+    user = relationship('User', back_populates='assignments')
+
+    active = Column(Boolean)

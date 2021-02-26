@@ -11,7 +11,7 @@ from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
 from tests import gqls_version
 
 # This module
-from .models import Article, Author, Group, Membership, User
+from .models import Article, Assignment, Author, Group, Membership, Task, User
 
 
 class BaseFilter(FilterSet):
@@ -35,6 +35,13 @@ USER_FILTER_FIELDS = {
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
     'is_active': ['eq', 'ne'],
     'username_hybrid_property': ['eq', 'ne', 'in'],
+    'assignments': {
+        'task': {
+            'name': ['eq'],
+            'id': ['eq']
+        },
+        'active': ['eq']
+    }
 }
 
 
@@ -191,11 +198,35 @@ class ArticleConnection(Connection):
         node = ArticleNode
 
 
+class TaskNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Task
+        interfaces = (graphene.relay.Node,)
+
+
+class TaskConnection(Connection):
+    class Meta:
+        node = TaskNode
+
+
+class AssignmentNode(SQLAlchemyObjectType):
+    class Meta:
+        model = Assignment
+        interfaces = (graphene.relay.Node,)
+
+
+class AssignmentConnection(Connection):
+    class Meta:
+        node = AssignmentNode
+
+
 class Query(graphene.ObjectType):
     field = MyFilterableConnectionField(UserConnection)
     all_groups = MyFilterableConnectionField(GroupConnection)
     all_authors = MyFilterableConnectionField(AuthorConnection)
     all_articles = MyFilterableConnectionField(ArticleConnection)
+    tasks = MyFilterableConnectionField(TaskConnection)
+    assignments =  MyFilterableConnectionField(AssignmentConnection)
 
 
 schema = graphene.Schema(query=Query)

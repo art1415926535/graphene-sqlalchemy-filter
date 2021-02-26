@@ -792,7 +792,6 @@ class FilterSet(graphene.InputObjectType):
             model=cls.model,
             parent_attr=None
         )
-        print(result)
         if not isinstance(result["__root__"], dict):
             return query.filter(result["__root__"])
         else:

@@ -6,7 +6,7 @@ from graphene_sqlalchemy_filter.connection_field import (
     graphene_sqlalchemy_version_lt_2_1_2,
 )
 from tests.graphql_objects import schema
-from tests.models import Group, Membership, User, Task, Assignment
+from tests.models import Assignment, Group, Membership, Task, User
 from tests.utils import SQLAlchemyQueryCounter
 
 
@@ -98,21 +98,9 @@ def assign_users_to_tasks(session, users):
     tasks = add_tasks(session)
 
     assignments = [
-        Assignment(
-            user_id=users[0].id,
-            task_id=tasks[0].id,
-            active=True
-        ),
-        Assignment(
-            user_id=users[0].id,
-            task_id=tasks[1].id,
-            active=False
-        ),
-        Assignment(
-            user_id=users[1].id,
-            task_id=tasks[2].id,
-            active=True
-        )
+        Assignment(user_id=users[0].id, task_id=tasks[0].id, active=True),
+        Assignment(user_id=users[0].id, task_id=tasks[1].id, active=False),
+        Assignment(user_id=users[1].id, task_id=tasks[2].id, active=True),
     ]
     session.bulk_save_objects(assignments, return_defaults=True)
     session.flush()
@@ -402,6 +390,7 @@ def test_relationship_filtering(session):
     execution_result = schema.execute(
         request_string, context={'session': session}
     )
-    assert len(execution_result.data["field"]["edges"]) == 1  # Only user_1 matches
-    assert execution_result.data["field"]["edges"][0]["node"]["username"] == "user_1"
-    assert len(execution_result.data["field"]["edges"][0]["node"]["assignments"]["edges"]) == 2
+    edges = execution_result.data["field"]["edges"]
+    assert len(execution_result.data["field"]["edges"]) == 1
+    assert edges[0]["node"]["username"] == "user_1"
+    assert len(edges[0]["node"]["assignments"]["edges"]) == 2

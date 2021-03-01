@@ -35,13 +35,7 @@ USER_FILTER_FIELDS = {
     'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
     'is_active': ['eq', 'ne'],
     'username_hybrid_property': ['eq', 'ne', 'in'],
-    'assignments': {
-        'task': {
-            'name': ['eq'],
-            'id': ['eq']
-        },
-        'active': ['eq']
-    }
+    'assignments': {'task': {'name': ['eq'], 'id': ['eq']}, 'active': ['eq']},
 }
 
 
@@ -226,7 +220,7 @@ class Query(graphene.ObjectType):
     all_authors = MyFilterableConnectionField(AuthorConnection)
     all_articles = MyFilterableConnectionField(ArticleConnection)
     tasks = MyFilterableConnectionField(TaskConnection)
-    assignments =  MyFilterableConnectionField(AssignmentConnection)
+    assignments = MyFilterableConnectionField(AssignmentConnection)
 
 
 schema = graphene.Schema(query=Query)

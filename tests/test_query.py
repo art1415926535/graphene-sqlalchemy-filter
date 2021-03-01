@@ -199,33 +199,30 @@ def test_complex_relationship_filters(info_and_user_query):
     info, user_query = info_and_user_query
 
     filters = {
-            'not': {'is_active': True},
-            'or': [
-                {'is_admin': False},
-                {
-                    'assignments': {
-                        'or': [
-                            {
-                                'task': {'name': 'Write code'}
-                            },
-                            {'active': True}
-                        ]
-                    }
+        'not': {'is_active': True},
+        'or': [
+            {'is_admin': False},
+            {
+                'assignments': {
+                    'or': [{'task': {'name': 'Write code'}}, {'active': True}]
                 }
-            ]
-        }
+            },
+        ],
+    }
     query = UserFilter.filter(info, user_query, filters)
 
     ok = (
-        '"user".is_active != true AND ("user".username != :username_1 OR (EXISTS (SELECT 1'
+        '"user".is_active != true AND '
+        '("user".username != :username_1 OR (EXISTS (SELECT 1'
         ' FROM "user", assignment'
         ' WHERE "user".user_id = assignment.user_id AND ((EXISTS (SELECT 1'
         ' FROM assignment'
         ' WHERE "user".user_id = assignment.user_id AND (EXISTS (SELECT 1'
         ' FROM task'
-        ' WHERE task.id = assignment.task_id AND task.name = :name_1)))) OR (EXISTS (SELECT 1'
-        ' FROM assignment'
-        ' WHERE "user".user_id = assignment.user_id AND assignment.active = true))))))'
+        ' WHERE task.id = assignment.task_id AND task.name = :name_1)))) OR '
+        '(EXISTS (SELECT 1 FROM assignment WHERE '
+        '"user".user_id = assignment.user_id AND '
+        'assignment.active = true))))))'
     )
     where_clause = str(query.whereclause).replace('\n', '')
     assert where_clause == ok

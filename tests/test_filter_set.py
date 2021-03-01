@@ -327,10 +327,41 @@ def test_generate_relationship_filter_field_names_concatenate_parents():
     filter_fields = deepcopy(UserFilter._meta.fields)
 
     assert filter_fields["assignments"].type._meta.name == "assignments"
-    assert getattr(filter_fields["assignments"].type, "and").type.of_type.of_type._meta.name == "assignments_and"
-    assert getattr(filter_fields["assignments"].type, "or").type.of_type.of_type._meta.name == "assignments_or"
-    assert getattr(filter_fields["assignments"].type, "not").type._meta.name == "assignments_not"
-    assert filter_fields["assignments"].type.task.type._meta.name == "assignments_task"
-    assert getattr(filter_fields["assignments"].type.task.type, "and").type.of_type.of_type._meta.name == "assignments_task_and"
-    assert getattr(filter_fields["assignments"].type.task.type, "or").type.of_type.of_type._meta.name == "assignments_task_or"
-    assert getattr(filter_fields["assignments"].type.task.type, "not").type._meta.name == "assignments_task_not"
+    assert (
+        getattr(
+            filter_fields["assignments"].type, "and"
+        ).type.of_type.of_type._meta.name
+        == "assignments_and"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type, "or"
+        ).type.of_type.of_type._meta.name
+        == "assignments_or"
+    )
+    assert (
+        getattr(filter_fields["assignments"].type, "not").type._meta.name
+        == "assignments_not"
+    )
+    assert (
+        filter_fields["assignments"].type.task.type._meta.name
+        == "assignments_task"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "and"
+        ).type.of_type.of_type._meta.name
+        == "assignments_task_and"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "or"
+        ).type.of_type.of_type._meta.name
+        == "assignments_task_or"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "not"
+        ).type._meta.name
+        == "assignments_task_not"
+    )

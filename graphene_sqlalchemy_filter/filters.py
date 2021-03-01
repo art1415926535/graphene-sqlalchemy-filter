@@ -20,11 +20,11 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.relationships import RelationshipProperty
 from sqlalchemy.sql import sqltypes
+import sqlalchemy.ext.declarative.api
 
 
 MYPY = False
@@ -497,10 +497,10 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def _generate_default_filters(
-            cls, model,
-            field_filters: 'Dict[str, Union[Iterable[str], Any]]') -> dict:
+        cls, model, field_filters: 'Dict[str, Union[Iterable[str], Any]]'
+    ) -> dict:
         """
-        Generate GraphQL fields from SQLAlchemy model columns and relationships.
+        Generate GraphQL fields from SQLAlchemy model columns & relationships.
 
         Args:
             model: SQLAlchemy model.
@@ -518,7 +518,7 @@ class FilterSet(graphene.InputObjectType):
             parent_field=None,
             parent=None,
             field_filters=field_filters,
-            parents=[]
+            parents=[],
         )
         for name, field in fields.items():
             graphql_filters[name] = get_field_as(field, graphene.InputField)
@@ -595,10 +595,7 @@ class FilterSet(graphene.InputObjectType):
                 name = attr.key
                 if name not in only_fields:
                     continue
-                model_fields[name] = {
-                    'column': attr,
-                    'type': 'relationship'
-                }
+                model_fields[name] = {'column': attr, 'type': 'relationship'}
 
         return model_fields
 
@@ -652,10 +649,10 @@ class FilterSet(graphene.InputObjectType):
         cls,
         model: 'sqlalchemy.ext.declarative.api.DeclarativeMeta',
         fields: dict,
-        parent_field: 'Union[String, None]',
+        parent_field: 'Union[str, None]',
         parent: 'Union[dict, None]',
         field_filters: dict,
-        parents: 'List[String]'
+        parents: 'List[str]',
     ) -> dict:
         """
         Recursively geenerate filters from the given fields.
@@ -686,7 +683,7 @@ class FilterSet(graphene.InputObjectType):
                     parent_field=field_name,
                     parent=fields,
                     field_filters=field_filters[field_name],
-                    parents=parents + [field_name]
+                    parents=parents + [field_name],
                 )
                 continue
 
@@ -720,7 +717,10 @@ class FilterSet(graphene.InputObjectType):
 
             fields.update(
                 cls._generate_filter_fields(
-                    expressions, field_name, field_type, field_object['nullable']
+                    expressions,
+                    field_name,
+                    field_type,
+                    field_object['nullable'],
                 )
             )
 
@@ -736,15 +736,21 @@ class FilterSet(graphene.InputObjectType):
 
                 # Need to concatenate to keep the types unique
                 OperatorAutoType = type(
-                    "_".join(parents + [op]), (graphene.InputObjectType, ), filters)
+                    "_".join(parents + [op]),
+                    (graphene.InputObjectType,),
+                    filters,
+                )
                 filters[graphql_name] = graphene.InputField(
-                    cls.FILTER_OBJECT_TYPES[op](OperatorAutoType, False, doc), description=doc
+                    cls.FILTER_OBJECT_TYPES[op](OperatorAutoType, False, doc),
+                    description=doc,
                 )
 
             AutoType = type(
-                "_".join(parents), (graphene.InputObjectType, ), filters)
+                "_".join(parents), (graphene.InputObjectType,), filters
+            )
             parent[parent_field] = graphene.InputField(
-                AutoType, description=parent_field)
+                AutoType, description=parent_field
+            )
 
         return fields
 
@@ -778,9 +784,7 @@ class FilterSet(graphene.InputObjectType):
             ).format(type(context))
             warnings.warn(msg, RuntimeWarning)
 
-        result = {
-            "__root__": {}
-        }
+        result = {"__root__": {}}
         query = cls._translate_many_filter(
             info=info,
             query=query,
@@ -790,7 +794,7 @@ class FilterSet(graphene.InputObjectType):
             result=result["__root__"],
             parent_result=result,
             model=cls.model,
-            parent_attr=None
+            parent_attr=None,
         )
         if not isinstance(result["__root__"], dict):
             return query.filter(result["__root__"])
@@ -837,11 +841,13 @@ class FilterSet(graphene.InputObjectType):
         query: Query,
         filters: 'Union[List[FilterType], FilterType]',
         join_by: 'Callable',
-        parent: 'String',
+        parent: str,
         result: dict,
         parent_result: dict,
         model: 'sqlalchemy.ext.declarative.api.DeclarativeMeta',
-        parent_attr: 'Union[sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
+        parent_attr: (
+            'Union[' 'sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
+        ),
     ) -> 'Query':
         """
         Recursively translate filters.
@@ -864,7 +870,7 @@ class FilterSet(graphene.InputObjectType):
         join_by_map = {
             "and": and_,
             "or": or_,
-            "not": lambda *x: not_(and_(*x))
+            "not": lambda *x: not_(and_(*x)),
         }
         for key, value in filters.items():
 
@@ -892,10 +898,15 @@ class FilterSet(graphene.InputObjectType):
                             result=result[key][op_key],
                             parent_result=result[key],
                             model=model,
-                            parent_attr=parent_attr
+                            parent_attr=parent_attr,
                         )
                     result[key] = join_by_map[key](
-                        *[v for v in result[key].values() if not isinstance(v, dict)])
+                        *[
+                            v
+                            for v in result[key].values()
+                            if not isinstance(v, dict)
+                        ]
+                    )
                 else:
                     query = cls._translate_many_filter(
                         info=info,
@@ -906,7 +917,7 @@ class FilterSet(graphene.InputObjectType):
                         result=result[key],
                         parent_result=result,
                         model=model,
-                        parent_attr=parent_attr
+                        parent_attr=parent_attr,
                     )
                 continue
 
@@ -927,7 +938,7 @@ class FilterSet(graphene.InputObjectType):
                             result=result[key],
                             parent_result=result,
                             model=relationship.mapper.class_,
-                            parent_attr=getattr(model, key)
+                            parent_attr=getattr(model, key),
                         )
                         break
             else:
@@ -951,11 +962,18 @@ class FilterSet(graphene.InputObjectType):
             return query
         if parent_attr is None:
             parent_result[parent] = join_by(
-                *[v for v in result.values() if not isinstance(v, dict)])
+                *[v for v in result.values() if not isinstance(v, dict)]
+            )
         elif parent_attr.property.uselist:
-            parent_result[parent] = parent_attr.any(join_by(
-                *[v for v in result.values() if not isinstance(v, dict)]))
+            parent_result[parent] = parent_attr.any(
+                join_by(
+                    *[v for v in result.values() if not isinstance(v, dict)]
+                )
+            )
         else:
-            parent_result[parent] = parent_attr.has(join_by(
-                *[v for v in result.values() if not isinstance(v, dict)]))
+            parent_result[parent] = parent_attr.has(
+                join_by(
+                    *[v for v in result.values() if not isinstance(v, dict)]
+                )
+            )
         return query

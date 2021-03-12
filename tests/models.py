@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     func,
 )
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship
@@ -115,6 +116,10 @@ class Task(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(32))
     assignments = relationship('Assignment', back_populates='task')
+    users = association_proxy('assignments', 'user')
+    status_id = Column(Integer, ForeignKey('status.id'))
+    status = relationship('Status')
+    status_name = association_proxy('status', 'name')
 
 
 class Assignment(Base):
@@ -126,3 +131,10 @@ class Assignment(Base):
     user = relationship('User', back_populates='assignments')
 
     active = Column(Boolean)
+
+
+class Status(Base):
+    __tablename__ = 'status'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(32))

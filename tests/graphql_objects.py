@@ -122,6 +122,12 @@ class AuthorFilter(FilterSet):
         }
 
 
+class TaskFilter(FilterSet):
+    class Meta:
+        model = Task
+        fields = {'users': {'username': [...]}, 'status_name': [...]}
+
+
 class MyFilterableConnectionField(FilterableConnectionField):
     filters = {
         User: UserFilter(),
@@ -129,6 +135,7 @@ class MyFilterableConnectionField(FilterableConnectionField):
         Group: GroupFilter(),
         Article: ArticleFilter(),
         Author: AuthorFilter(),
+        Task: TaskFilter(),
     }
 
 

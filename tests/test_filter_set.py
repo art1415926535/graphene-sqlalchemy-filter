@@ -326,42 +326,42 @@ def test_sql_alchemy_wrong_column_types():
 def test_generate_relationship_filter_field_names_concatenate_parents():
     filter_fields = deepcopy(UserFilter._meta.fields)
 
-    assert filter_fields["assignments"].type._meta.name == "assignments"
+    assert filter_fields["assignments"].type._meta.name == "user_assignments"
     assert (
         getattr(
             filter_fields["assignments"].type, "and"
         ).type.of_type.of_type._meta.name
-        == "assignments_and"
+        == "user_assignments_and"
     )
     assert (
         getattr(
             filter_fields["assignments"].type, "or"
         ).type.of_type.of_type._meta.name
-        == "assignments_or"
+        == "user_assignments_or"
     )
     assert (
         getattr(filter_fields["assignments"].type, "not").type._meta.name
-        == "assignments_not"
+        == "user_assignments_not"
     )
     assert (
         filter_fields["assignments"].type.task.type._meta.name
-        == "assignments_task"
+        == "user_assignments_task"
     )
     assert (
         getattr(
             filter_fields["assignments"].type.task.type, "and"
         ).type.of_type.of_type._meta.name
-        == "assignments_task_and"
+        == "user_assignments_task_and"
     )
     assert (
         getattr(
             filter_fields["assignments"].type.task.type, "or"
         ).type.of_type.of_type._meta.name
-        == "assignments_task_or"
+        == "user_assignments_task_or"
     )
     assert (
         getattr(
             filter_fields["assignments"].type.task.type, "not"
         ).type._meta.name
-        == "assignments_task_not"
+        == "user_assignments_task_not"
     )

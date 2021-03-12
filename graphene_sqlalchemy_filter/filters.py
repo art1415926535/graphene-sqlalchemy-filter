@@ -18,6 +18,10 @@ from graphql import ResolveInfo
 from sqlalchemy import and_, cast, inspection, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
+from sqlalchemy.ext.associationproxy import (
+    AssociationProxy,
+    AssociationProxyInstance,
+)
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.properties import ColumnProperty
@@ -518,7 +522,7 @@ class FilterSet(graphene.InputObjectType):
             parent_field=None,
             parent=None,
             field_filters=field_filters,
-            parents=[],
+            parents=[model.__tablename__],
         )
         for name, field in fields.items():
             graphql_filters[name] = get_field_as(field, graphene.InputField)
@@ -577,6 +581,41 @@ class FilterSet(graphene.InputObjectType):
                     'nullable': True,
                 }
 
+            elif isinstance(descr, AssociationProxy):
+                name = None
+                for attr in dir(model):
+                    field = getattr(model, attr)
+                    if (
+                        isinstance(field, AssociationProxyInstance)
+                        # We have to get the actual field name
+                        and not attr.startswith("_AssociationProxy")
+                        and field.value_attr
+                        == descr.for_class(model).value_attr
+                        and field.target_class
+                        == descr.for_class(model).target_class
+                    ):
+                        name = attr
+                        break
+                if name not in only_fields:
+                    continue
+                proxy_class = descr.for_class(model).target_class
+                proxy_attr = descr.for_class(model).value_attr
+                column = getattr(proxy_class, proxy_attr)
+                if hasattr(column, "mapper"):
+                    related_model = column.mapper.class_
+                    model_fields[name] = {
+                        'column': descr.for_class(model),
+                        'related_model': related_model,
+                        'type': 'relationship',
+                    }
+                else:
+                    print(column.nullable)
+                    model_fields[name] = {
+                        'column': column,
+                        'type': column.type,
+                        'nullable': column.nullable,
+                    }
+
             elif isinstance(descr.property, ColumnProperty):
                 attr = descr.property
                 name = attr.key
@@ -595,7 +634,11 @@ class FilterSet(graphene.InputObjectType):
                 name = attr.key
                 if name not in only_fields:
                     continue
-                model_fields[name] = {'column': attr, 'type': 'relationship'}
+                model_fields[name] = {
+                    'column': attr,
+                    'related_model': attr.mapper.class_,
+                    'type': 'relationship',
+                }
 
         return model_fields
 
@@ -675,10 +718,9 @@ class FilterSet(graphene.InputObjectType):
         for field_name, field_object in model_fields.items():
             column_type = field_object['type']
             if column_type == 'relationship':
-                rel_model = field_object['column'].mapper.class_
                 fields[field_name] = {}
                 cls._recursively_generate_filters(
-                    model=rel_model,
+                    model=field_object['related_model'],
                     fields=fields[field_name],
                     parent_field=field_name,
                     parent=fields,
@@ -848,6 +890,7 @@ class FilterSet(graphene.InputObjectType):
         parent_attr: (
             'Union[' 'sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
         ),
+        expression_type: str = None,
     ) -> 'Query':
         """
         Recursively translate filters.
@@ -862,6 +905,7 @@ class FilterSet(graphene.InputObjectType):
             parent_result: Parent for the result.
             model: The model to translate.
             parent_attr: The parent attribute (for relationships).
+            expression_type: Either 'any' or 'has' for relationships.
 
         Returns:
             Query.
@@ -899,6 +943,7 @@ class FilterSet(graphene.InputObjectType):
                             parent_result=result[key],
                             model=model,
                             parent_attr=parent_attr,
+                            expression_type=expression_type
                         )
                     result[key] = join_by_map[key](
                         *[
@@ -918,6 +963,7 @@ class FilterSet(graphene.InputObjectType):
                         parent_result=result,
                         model=model,
                         parent_attr=parent_attr,
+                        expression_type=expression_type
                     )
                 continue
 
@@ -927,20 +973,61 @@ class FilterSet(graphene.InputObjectType):
             if isinstance(value, dict) and expression != "range":
                 result.setdefault(key, {})
                 inspected = inspection.inspect(model)
-                for relationship in inspected.relationships:
-                    if relationship.key == key:
-                        query = cls._translate_many_filter(
-                            info=info,
-                            query=query,
-                            filters=value,
-                            join_by=and_,
-                            parent=key,
-                            result=result[key],
-                            parent_result=result,
-                            model=relationship.mapper.class_,
-                            parent_attr=getattr(model, key),
-                        )
-                        break
+                for descr in inspected.all_orm_descriptors:
+                    if isinstance(
+                        getattr(descr, "property", None), RelationshipProperty
+                    ):
+                        if descr.key == key:
+                            expression_type_ = "has"
+                            if getattr(model, key).property.uselist:
+                                expression_type_ = "any"
+                            query = cls._translate_many_filter(
+                                info=info,
+                                query=query,
+                                filters=value,
+                                join_by=and_,
+                                parent=key,
+                                result=result[key],
+                                parent_result=result,
+                                model=descr.mapper.class_,
+                                parent_attr=getattr(model, key),
+                                expression_type=expression_type_,
+                            )
+                            break
+                    elif isinstance(descr, AssociationProxy):
+                        parent_attr_ = getattr(model, key)
+                        if (
+                            isinstance(parent_attr_, AssociationProxyInstance)
+                            and parent_attr_.value_attr
+                            == descr.for_class(model).value_attr
+                            and parent_attr_.target_class
+                            == descr.for_class(model).target_class
+                        ):
+                            proxy_class = descr.for_class(model).target_class
+                            proxy_attr = descr.for_class(model).value_attr
+                            related_model = getattr(
+                                proxy_class, proxy_attr
+                            ).mapper.class_
+
+                            expression_type_ = "has"
+                            if getattr(
+                                model, descr.target_collection
+                            ).property.uselist:
+                                expression_type_ = "any"
+
+                            query = cls._translate_many_filter(
+                                info=info,
+                                query=query,
+                                filters=value,
+                                join_by=and_,
+                                parent=key,
+                                result=result[key],
+                                parent_result=result,
+                                model=related_model,
+                                parent_attr=getattr(model, key),
+                                expression_type=expression_type_,
+                            )
+                            break
             else:
                 try:
                     model_field = getattr(model, field)
@@ -964,7 +1051,7 @@ class FilterSet(graphene.InputObjectType):
             parent_result[parent] = join_by(
                 *[v for v in result.values() if not isinstance(v, dict)]
             )
-        elif parent_attr.property.uselist:
+        elif expression_type == "any":
             parent_result[parent] = parent_attr.any(
                 join_by(
                     *[v for v in result.values() if not isinstance(v, dict)]

@@ -486,10 +486,18 @@ class FilterSet(graphene.InputObjectType):
             Dictionary of model aliases.
 
         """
-        aliases = {
-            (mapper._target, mapper.name): mapper.entity
-            for mapper in query._join_entities
-        }
+
+        join_entities = getattr(query, '_join_entities', None)
+        if join_entities:
+            aliases = {
+                (mapper._target, mapper.name): mapper.entity
+                for mapper in join_entities
+            }
+        else:
+            aliases = {
+                (join_entity._target, join_entity.name): join_entity.entity
+                    for join_entity in query._compile_state()._join_entities
+            }
 
         return aliases
 

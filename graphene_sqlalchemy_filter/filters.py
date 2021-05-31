@@ -265,6 +265,8 @@ class FilterSet(graphene.InputObjectType):
         NOT: 'Negation of filters.',
     }
 
+    AUTO_TYPE_NAMES = {}
+
     class Meta:
         abstract = True
 
@@ -698,7 +700,7 @@ class FilterSet(graphene.InputObjectType):
         parents: 'List[str]',
     ) -> dict:
         """
-        Recursively geenerate filters from the given fields.
+        Recursively generate filters from the given fields.
 
         Args:
             model: The model.
@@ -772,13 +774,24 @@ class FilterSet(graphene.InputObjectType):
             for name, field in fields.items():
                 filters[name] = get_field_as(field, graphene.InputField)
 
+            # Make sure the name of the type does not repeat globally
+            auto_type_name = "_".join(parents)
+            if auto_type_name in FilterSet.AUTO_TYPE_NAMES:
+                FilterSet.AUTO_TYPE_NAMES[auto_type_name] += 1
+                auto_type_name = (
+                    f"{auto_type_name}"
+                    f"{FilterSet.AUTO_TYPE_NAMES[auto_type_name]}"
+                )
+            else:
+                FilterSet.AUTO_TYPE_NAMES[auto_type_name] = 0
+
             for op in [cls.AND, cls.OR, cls.NOT]:
                 doc = cls.DESCRIPTIONS.get(op)
                 graphql_name = cls.GRAPHQL_EXPRESSION_NAMES[op]
 
                 # Need to concatenate to keep the types unique
                 OperatorAutoType = type(
-                    "_".join(parents + [op]),
+                    f"{auto_type_name}_{op}",
                     (graphene.InputObjectType,),
                     filters,
                 )
@@ -788,7 +801,7 @@ class FilterSet(graphene.InputObjectType):
                 )
 
             AutoType = type(
-                "_".join(parents), (graphene.InputObjectType,), filters
+                auto_type_name, (graphene.InputObjectType,), filters
             )
             parent[parent_field] = graphene.InputField(
                 AutoType, description=parent_field
@@ -943,7 +956,7 @@ class FilterSet(graphene.InputObjectType):
                             parent_result=result[key],
                             model=model,
                             parent_attr=parent_attr,
-                            expression_type=expression_type
+                            expression_type=expression_type,
                         )
                     result[key] = join_by_map[key](
                         *[
@@ -963,7 +976,7 @@ class FilterSet(graphene.InputObjectType):
                         parent_result=result,
                         model=model,
                         parent_attr=parent_attr,
-                        expression_type=expression_type
+                        expression_type=expression_type,
                     )
                 continue
 

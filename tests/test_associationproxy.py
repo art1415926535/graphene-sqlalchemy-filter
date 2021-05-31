@@ -13,10 +13,10 @@ def test_sql_query(info):
     where_clause = str(query.whereclause)
     ok = (
         '(EXISTS (SELECT 1'
-        ' FROM task, assignment'
-        ' WHERE task.id = assignment.task_id AND (EXISTS (SELECT 1'
+        ' FROM task, task_assignments'
+        ' WHERE task.id = task_assignments.task_id AND (EXISTS (SELECT 1'
         ' FROM "user"'
-        ' WHERE "user".user_id = assignment.user_id AND '
+        ' WHERE "user".user_id = task_assignments.user_id AND '
         '"user".username = :username_1)))) AND (EXISTS (SELECT 1'
         ' FROM status, task'
         ' WHERE status.id = task.status_id AND status.name = :name_1))'

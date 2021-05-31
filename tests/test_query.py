@@ -214,15 +214,15 @@ def test_complex_relationship_filters(info_and_user_query):
     ok = (
         '"user".is_active != true AND '
         '("user".username != :username_1 OR (EXISTS (SELECT 1'
-        ' FROM "user", assignment'
-        ' WHERE "user".user_id = assignment.user_id AND ((EXISTS (SELECT 1'
-        ' FROM assignment'
-        ' WHERE "user".user_id = assignment.user_id AND (EXISTS (SELECT 1'
-        ' FROM task'
-        ' WHERE task.id = assignment.task_id AND task.name = :name_1)))) OR '
-        '(EXISTS (SELECT 1 FROM assignment WHERE '
-        '"user".user_id = assignment.user_id AND '
-        'assignment.active = true))))))'
+        ' FROM "user", task_assignments'
+        ' WHERE "user".user_id = task_assignments.user_id AND ((EXISTS'
+        ' (SELECT 1 FROM task_assignments'
+        ' WHERE "user".user_id = task_assignments.user_id AND (EXISTS'
+        ' (SELECT 1 FROM task'
+        ' WHERE task.id = task_assignments.task_id AND task.name = :name_1))))'
+        ' OR (EXISTS (SELECT 1 FROM task_assignments WHERE '
+        '"user".user_id = task_assignments.user_id AND '
+        'task_assignments.active = true))))))'
     )
     where_clause = str(query.whereclause).replace('\n', '')
     assert where_clause == ok

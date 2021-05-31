@@ -123,7 +123,7 @@ class Task(Base):
 
 
 class Assignment(Base):
-    __tablename__ = 'assignment'
+    __tablename__ = 'task_assignments'
 
     task_id = Column(Integer, ForeignKey('task.id'), primary_key=True)
     task = relationship('Task', back_populates='assignments')

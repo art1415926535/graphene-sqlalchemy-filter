@@ -28,7 +28,6 @@ from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.relationships import RelationshipProperty
 from sqlalchemy.sql import sqltypes
-import sqlalchemy.ext.declarative.api
 
 
 MYPY = False
@@ -504,7 +503,7 @@ class FilterSet(graphene.InputObjectType):
         else:
             aliases = {
                 (join_entity._target, join_entity.name): join_entity.entity
-                    for join_entity in query._compile_state()._join_entities
+                for join_entity in query._compile_state()._join_entities
             }
 
         return aliases
@@ -909,7 +908,7 @@ class FilterSet(graphene.InputObjectType):
         parent_result: dict,
         model: 'sqlalchemy.ext.declarative.api.DeclarativeMeta',
         parent_attr: (
-            'Union[' 'sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
+            'Union[sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
         ),
         expression_type: str = None,
     ) -> 'Query':

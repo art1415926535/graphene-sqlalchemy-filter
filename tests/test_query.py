@@ -4,6 +4,9 @@ import pytest
 # GraphQL
 from graphene_sqlalchemy.utils import EnumValue
 
+# Database
+from sqlalchemy.sql import text
+
 # Project
 from graphene_sqlalchemy_filter import FilterSet
 from tests import gqls_version, models
@@ -14,13 +17,16 @@ def test_sort(info):
     filters = None
     sort = 'username desc'
     query = Query.field.get_query(
-        models.User, info, sort=EnumValue('username', sort), filters=filters
+        models.User,
+        info,
+        sort=EnumValue('username', text(sort)),
+        filters=filters,
     )
 
     where_clause = query.whereclause
     assert where_clause is None
 
-    assert str(query._order_by[0]) == sort
+    assert str(query._order_by_clauses[0]) == sort
 
 
 def test_empty_filters_query(info_and_user_query):
@@ -186,7 +192,7 @@ def test_complex_filters(info_and_user_query):
         ' OR "user".is_active != true'
         ' AND is_moderator.id IS NOT NULL'
         ' OR of_group.name = :name_1'
-        ' AND "user".username NOT IN (:username_3))'
+        ' AND ("user".username NOT IN ([POSTCOMPILE_username_3])))'
     )
     where_clause = str(query.whereclause)
     assert where_clause == ok

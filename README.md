@@ -1,6 +1,10 @@
-# Graphene-SQLAlchemy-Filter
+# Graphene-SQLAlchemy-Filter-v3
 
-[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI) [![Coverage Status](https://coveralls.io/repos/github/art1415926535/graphene-sqlalchemy-filter/badge.svg?branch=master)](https://coveralls.io/github/art1415926535/graphene-sqlalchemy-filter?branch=master) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
+# Overview
+Fork of [`graphene-sqlalchemy-filter`](https://github.com/art1415926535/graphene-sqlalchemy-filter) with support for `graphene` v3.
+
+## Original readme as follows:
+
 
 Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/graphene-sqlalchemy)
 

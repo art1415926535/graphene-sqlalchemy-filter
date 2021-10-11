@@ -25,16 +25,17 @@ if MYPY:
         Type,
         Union,
     )  # noqa: F401; pragma: no cover
-    from graphql import ResolveInfo  # noqa: F401; pragma: no cover
+    from graphql import GraphQLResolveInfo  # noqa: F401; pragma: no cover
     from graphene.relay import Connection  # noqa: F401; pragma: no cover
     from sqlalchemy.orm import Query  # noqa: F401; pragma: no cover
     from .filters import FilterSet  # noqa: F401; pragma: no cover
 
-
-graphene_sqlalchemy_version_lt_2_1_2 = tuple(
-    map(int, graphene_sqlalchemy.__version__.split('.'))
-) < (2, 1, 2)
-
+try:
+    graphene_sqlalchemy_version_lt_2_1_2 = tuple(
+        map(int, graphene_sqlalchemy.__version__.split('.'))
+    ) < (2, 1, 2)
+except ValueError:
+    graphene_sqlalchemy_version_lt_2_1_2 = False
 
 if graphene_sqlalchemy_version_lt_2_1_2:
     default_connection_field_factory = None  # pragma: no cover
@@ -78,7 +79,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
         super().__init__(connection, *args, **kwargs)
 
     @classmethod
-    def get_query(cls, model, info: 'ResolveInfo', sort=None, **args):
+    def get_query(cls, model, info: 'GraphQLResolveInfo', sort=None, **args):
         """Standard get_query with filtering."""
         query = super().get_query(model, info, sort, **args)
 
@@ -90,7 +91,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
         return query
 
     @classmethod
-    def get_filter_set(cls, info: 'ResolveInfo') -> 'FilterSet':
+    def get_filter_set(cls, info: 'GraphQLResolveInfo') -> 'FilterSet':
         """
         Get field filter set.
 
@@ -115,7 +116,7 @@ class ModelLoader(dataloader.DataLoader):
         self,
         parent_model: 'Any',
         model: 'Any',
-        info: 'ResolveInfo',
+        info: 'GraphQLResolveInfo',
         graphql_args: dict,
     ):
         """
@@ -129,7 +130,7 @@ class ModelLoader(dataloader.DataLoader):
 
         """
         super().__init__()
-        self.info: 'ResolveInfo' = info
+        self.info: 'GraphQLResolveInfo' = info
         self.graphql_args: dict = graphql_args
 
         self.model: 'Any' = model
@@ -215,7 +216,7 @@ class ModelLoader(dataloader.DataLoader):
         return key
 
     @classmethod
-    def _get_filter_set(cls, info: 'ResolveInfo') -> 'FilterSet':
+    def _get_filter_set(cls, info: 'GraphQLResolveInfo') -> 'FilterSet':
         """
         Get field filter set.
 
@@ -287,7 +288,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
 
     @classmethod
     def _get_or_create_data_loader(
-        cls, root: 'Any', model: 'Any', info: 'ResolveInfo', args: dict
+        cls, root: 'Any', model: 'Any', info: 'GraphQLResolveInfo', args: dict
     ) -> ModelLoader:
         """
         Get or create (and save) dataloader from ResolveInfo
@@ -335,7 +336,7 @@ class NestedFilterableConnectionField(FilterableConnectionField):
         connection_type: 'Any',
         model: 'Any',
         root: 'Any',
-        info: 'ResolveInfo',
+        info: 'GraphQLResolveInfo',
         **kwargs: dict,
     ) -> 'Union[Promise, Connection]':
         """

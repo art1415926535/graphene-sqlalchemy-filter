@@ -12,7 +12,7 @@ from graphene.types.inputobjecttype import InputObjectTypeOptions
 from graphene.types.utils import get_field_as
 from graphene_sqlalchemy import __version__ as gqls_version
 from graphene_sqlalchemy.converter import convert_sqlalchemy_type
-from graphql import ResolveInfo
+from graphql import GraphQLResolveInfo
 
 # Database
 from sqlalchemy import and_, cast, inspection, not_, or_, types
@@ -54,8 +54,10 @@ try:
 except ImportError:
     TSVectorType = object
 
-
-gqls_version = tuple([int(x) for x in gqls_version.split('.')])
+try:
+    gqls_version = tuple([int(x) for x in gqls_version.split('.')])
+except ValueError:
+    gqls_version = tuple([3, 0, 0])
 
 
 def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
@@ -496,7 +498,7 @@ class FilterSet(graphene.InputObjectType):
         else:
             aliases = {
                 (join_entity._target, join_entity.name): join_entity.entity
-                    for join_entity in query._compile_state()._join_entities
+                for join_entity in query._compile_state()._join_entities
             }
 
         return aliases
@@ -676,7 +678,7 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def filter(
-        cls, info: ResolveInfo, query: Query, filters: 'FilterType'
+        cls, info: GraphQLResolveInfo, query: Query, filters: 'FilterType'
     ) -> Query:
         """
         Return a new query instance with the args ANDed to the existing set.
@@ -746,7 +748,7 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def _translate_filter(
-        cls, info: ResolveInfo, query: Query, key: str, value: 'Any'
+        cls, info: GraphQLResolveInfo, query: Query, key: str, value: 'Any'
     ) -> 'Tuple[Query, Any]':
         """
         Translate GraphQL to SQLAlchemy filters.
@@ -804,7 +806,7 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def _translate_many_filter(
         cls,
-        info: ResolveInfo,
+        info: GraphQLResolveInfo,
         query: Query,
         filters: 'Union[List[FilterType], FilterType]',
         join_by: 'Callable' = None,

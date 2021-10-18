@@ -1,10 +1,4 @@
-# Graphene-SQLAlchemy-Filter-v3
-
-# Overview
-Fork of [`graphene-sqlalchemy-filter`](https://github.com/art1415926535/graphene-sqlalchemy-filter) with support for `graphene` v3.
-
-## Original readme as follows:
-
+# Graphene-SQLAlchemy-Filter
 
 Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/graphene-sqlalchemy)
 

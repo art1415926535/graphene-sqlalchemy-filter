@@ -2,7 +2,7 @@
 import pytest
 
 # GraphQL
-from graphql import ResolveInfo
+from graphql import GraphQLResolveInfo
 
 # Database
 from sqlalchemy import create_engine
@@ -40,7 +40,7 @@ def info():
     session_factory = sessionmaker(bind=connection)
     session = scoped_session(session_factory)
 
-    yield ResolveInfo(*[None] * 9, context={'session': session})
+    yield GraphQLResolveInfo(*[None] * 9, context={'session': session})
 
     transaction.rollback()
     connection.close()
@@ -57,7 +57,7 @@ def info_and_user_query():
     session_factory = sessionmaker(bind=connection)
     session = scoped_session(session_factory)
 
-    info = ResolveInfo(*[None] * 9, context={'session': session})
+    info = GraphQLResolveInfo(*[None] * 9, context={'session': session})
     user_query = session.query(models.User)
 
     yield info, user_query

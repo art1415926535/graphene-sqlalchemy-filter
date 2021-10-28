@@ -1,6 +1,7 @@
 # Standard Library
 import contextlib
 import inspect
+import re
 import warnings
 from copy import deepcopy
 from functools import lru_cache
@@ -27,16 +28,19 @@ from sqlalchemy.sql import sqltypes
 
 MYPY = False
 if MYPY:
+    # Standard Library
     from typing import (  # noqa: F401; pragma: no cover
         Any,
         Callable,
         Dict,
         Iterable,
         List,
-        Type,
         Tuple,
+        Type,
         Union,
     )
+
+    # Database
     from sqlalchemy import Column  # noqa: F401; pragma: no cover
     from sqlalchemy.orm.query import (  # noqa: F401; pragma: no cover
         _MapperEntity,
@@ -50,6 +54,7 @@ if MYPY:
 
 
 try:
+    # Third Party
     from sqlalchemy_utils import TSVectorType
 except ImportError:
     TSVectorType = object
@@ -57,7 +62,7 @@ except ImportError:
 try:
     gqls_version = tuple([int(x) for x in gqls_version.split('.')])
 except ValueError:
-    gqls_version = tuple([3, 0, 0])
+    gqls_version = tuple([int(x) for x in re.findall(r'\d+',gqls_version)])
 
 
 def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':

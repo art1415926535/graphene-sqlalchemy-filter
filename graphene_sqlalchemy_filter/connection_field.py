@@ -1,4 +1,5 @@
 # Standard Library
+import re
 from contextlib import suppress
 from functools import partial
 from typing import cast
@@ -15,7 +16,8 @@ from sqlalchemy.orm import Load, aliased, contains_eager
 
 MYPY = False
 if MYPY:
-    from typing import (
+    # Standard Library
+    from typing import (  # noqa: F401; pragma: no cover
         Any,
         Callable,
         Dict,
@@ -24,15 +26,21 @@ if MYPY:
         Tuple,
         Type,
         Union,
-    )  # noqa: F401; pragma: no cover
-    from graphql import GraphQLResolveInfo  # noqa: F401; pragma: no cover
+    )
+
+    # GraphQL
     from graphene.relay import Connection  # noqa: F401; pragma: no cover
+    from graphql import GraphQLResolveInfo  # noqa: F401; pragma: no cover
+
+    # Database
     from sqlalchemy.orm import Query  # noqa: F401; pragma: no cover
+
+    # This module
     from .filters import FilterSet  # noqa: F401; pragma: no cover
 
 try:
     graphene_sqlalchemy_version_lt_2_1_2 = tuple(
-        map(int, graphene_sqlalchemy.__version__.split('.'))
+        map(int, re.split(r'\d+\D',graphene_sqlalchemy.__version__))
     ) < (2, 1, 2)
 except ValueError:
     graphene_sqlalchemy_version_lt_2_1_2 = False
@@ -40,6 +48,7 @@ except ValueError:
 if graphene_sqlalchemy_version_lt_2_1_2:
     default_connection_field_factory = None  # pragma: no cover
 else:
+    # GraphQL
     from graphene_sqlalchemy.fields import default_connection_field_factory
 
 
@@ -102,7 +111,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+        field_name = info.field_nodes[0].name.value
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type
@@ -227,7 +236,7 @@ class ModelLoader(dataloader.DataLoader):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+        field_name = info.field_nodes[0].name.value
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type

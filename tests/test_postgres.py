@@ -34,7 +34,7 @@ def test_eq(info):
     ok = (
         'SELECT post.id, post.tags \n'
         'FROM post \n'
-        'WHERE post.tags = CAST(%(param_1)s AS VARCHAR(10)[])'
+        'WHERE post.tags = CAST(%(param_1)s::VARCHAR(10)[] AS VARCHAR(10)[])'
     )
     assert sql == ok
 
@@ -48,7 +48,7 @@ def test_contained_by(info):
     ok = (
         'SELECT post.id, post.tags \n'
         'FROM post \n'
-        'WHERE post.tags <@ CAST(%(param_1)s AS VARCHAR(10)[])'
+        'WHERE post.tags <@ CAST(%(param_1)s::VARCHAR(10)[] AS VARCHAR(10)[])'
     )
     assert sql == ok
 
@@ -62,7 +62,7 @@ def test_contains(info):
     ok = (
         'SELECT post.id, post.tags \n'
         'FROM post \n'
-        'WHERE post.tags @> CAST(%(param_1)s AS VARCHAR(10)[])'
+        'WHERE post.tags @> CAST(%(param_1)s::VARCHAR(10)[] AS VARCHAR(10)[])'
     )
     assert sql == ok
 
@@ -76,6 +76,6 @@ def test_overlap(info):
     ok = (
         'SELECT post.id, post.tags \n'
         'FROM post \n'
-        'WHERE post.tags && CAST(%(param_1)s AS VARCHAR(10)[])'
+        'WHERE post.tags && CAST(%(param_1)s::VARCHAR(10)[] AS VARCHAR(10)[])'
     )
     assert sql == ok

@@ -20,7 +20,7 @@ def test_sort(info):
     where_clause = query.whereclause
     assert where_clause is None
 
-    assert str(query._order_by[0]) == sort
+    assert str(query._order_by_clauses[0]) == sort
 
 
 def test_empty_filters_query(info_and_user_query):
@@ -187,7 +187,7 @@ def test_complex_filters(info_and_user_query):
         ' OR "user".is_active != true'
         ' AND is_moderator.id IS NOT NULL'
         ' OR of_group.name = :name_1'
-        ' AND "user".username NOT IN (:username_3))'
+        ' AND ("user".username NOT IN ([POSTCOMPILE_username_3])))'
     )
     where_clause = str(query.whereclause)
     assert where_clause == ok

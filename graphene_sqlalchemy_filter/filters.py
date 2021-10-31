@@ -496,7 +496,7 @@ class FilterSet(graphene.InputObjectType):
         else:
             aliases = {
                 (join_entity._target, join_entity.name): join_entity.entity
-                    for join_entity in query._compile_state()._join_entities
+                for join_entity in query._compile_state()._join_entities
             }
 
         return aliases

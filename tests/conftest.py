@@ -13,7 +13,7 @@ from tests import models
 from tests.models import Base
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def session():
     db = create_engine('sqlite://')  # in-memory
     connection = db.engine.connect()
@@ -30,7 +30,7 @@ def session():
     session.remove()
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def info():
     db = create_engine('sqlite://')  # in-memory
     connection = db.engine.connect()
@@ -47,7 +47,7 @@ def info():
     session.remove()
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def info_and_user_query():
     db = create_engine('sqlite://')  # in-memory
     connection = db.engine.connect()

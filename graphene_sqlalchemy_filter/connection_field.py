@@ -247,7 +247,9 @@ class ModelLoader(dataloader.DataLoader):
             filter_set = self._get_filter_set(self.info)
             subquery = filter_set.filter(self.info, subquery, request_filters)
 
-        aliased_model = aliased(self.model, subquery.subquery(with_labels=True))
+        aliased_model = aliased(
+            self.model, subquery.subquery(with_labels=True)
+        )
 
         query = (
             graphene_sqlalchemy.get_query(self.parent_model, self.info.context)

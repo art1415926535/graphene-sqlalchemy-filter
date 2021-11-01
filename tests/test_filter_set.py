@@ -33,10 +33,11 @@ def test_default_filter_field_types():
     for model_field, operators in USER_FILTER_FIELDS.items():
         for op in operators:
             field = model_field
+            if op not in UserFilter.GRAPHQL_EXPRESSION_NAMES:
+                continue
             graphql_op = UserFilter.GRAPHQL_EXPRESSION_NAMES[op]
             if graphql_op:
                 field += filters.DELIMITER + graphql_op
-
             assert field in filter_fields, 'Field not found: ' + field
             assert isinstance(filter_fields[field], graphene.InputField)
             del filter_fields[field]
@@ -320,3 +321,47 @@ def test_sql_alchemy_wrong_column_types():
             class Meta:
                 model = models.User
                 fields = {'id': [...]}
+
+
+def test_generate_relationship_filter_field_names_concatenate_parents():
+    filter_fields = deepcopy(UserFilter._meta.fields)
+
+    assert filter_fields["assignments"].type._meta.name == "user_assignments"
+    assert (
+        getattr(
+            filter_fields["assignments"].type, "and"
+        ).type.of_type.of_type._meta.name
+        == "user_assignments_and"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type, "or"
+        ).type.of_type.of_type._meta.name
+        == "user_assignments_or"
+    )
+    assert (
+        getattr(filter_fields["assignments"].type, "not").type._meta.name
+        == "user_assignments_not"
+    )
+    assert (
+        filter_fields["assignments"].type.task.type._meta.name
+        == "user_assignments_task"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "and"
+        ).type.of_type.of_type._meta.name
+        == "user_assignments_task_and"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "or"
+        ).type.of_type.of_type._meta.name
+        == "user_assignments_task_or"
+    )
+    assert (
+        getattr(
+            filter_fields["assignments"].type.task.type, "not"
+        ).type._meta.name
+        == "user_assignments_task_not"
+    )

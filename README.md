@@ -21,6 +21,12 @@ class UserFilter(FilterSet):
         fields = {
             'username': ['eq', 'ne', 'in', 'ilike'],
             'is_active': [...],  # shortcut!
+            'assignments': {  # (nested) relationships are supported
+                'task': {
+                    'name': ['eq'],
+                },
+                'active': ['eq']
+            }
         }
 
     @staticmethod
@@ -45,7 +51,12 @@ Now, we're going to create query.
       or: [
         {isAdmin: true},
         {usernameIn: ["moderator", "cool guy"]}
-      ]
+      ],
+      assignments: {
+        task: {
+          name: "Write code"
+        }
+      }
     }
   ){
     edges {
@@ -65,10 +76,10 @@ Now, we're going to create query.
 
 FilterSet class must inherit `graphene_sqlalchemy_filter.FilterSet` or your subclass of this class.
 
-There are three types of filters:  
-  1. [automatically generated filters](#automatically-generated-filters)  
-  1. [simple filters](#simple-filters)  
-  1. [filters that require join](#filters-that-require-join)  
+There are three types of filters:
+  1. [automatically generated filters](#automatically-generated-filters)
+  1. [simple filters](#simple-filters)
+  1. [filters that require join](#filters-that-require-join)
 
 
 ## Automatically generated filters
@@ -77,14 +88,20 @@ class UserFilter(FilterSet):
    class Meta:
        model = User
        fields = {
-           'username': ['eq', 'ne', 'in', 'ilike'],
-           'is_active': [...],  # shortcut!
+            'username': ['eq', 'ne', 'in', 'ilike'],
+            'is_active': [...],  # shortcut!
+            'assignments': {  # (nested) relationships are supported
+                'task': {
+                    'name': ['eq'],
+                },
+                'active': ['eq']
+            }
        }
 ```
 Metaclass must contain the sqlalchemy model and fields.
 
-Automatically generated filters must be specified by `fields` variable. 
-Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
+Automatically generated filters must be specified by `fields` variable.
+Key - field name of sqlalchemy model, value - list of expressions (or shortcut). For relationship fields, the value is another dictionary defining the filters for the related model.
 
 Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field (does not work with hybrid property).
 
@@ -141,7 +158,7 @@ class UserFilter(FilterSet):
     @classmethod
     def is_moderator_filter(cls, info, query, value):
         membership = cls.aliased(query, Membership, name='is_moderator')
-  
+
         query = query.outerjoin(
             membership,
             and_(
@@ -207,7 +224,7 @@ class UserFilter(FilterSet):
    class Meta:
        model = User
        fields = {'is_active': [...]}
-       
+
 
 
 class CustomField(FilterableConnectionField):
@@ -431,7 +448,7 @@ class MyString(types.String):
 class BaseFilter(FilterSet):
     # You can override all allowed filters
     # ALLOWED_FILTERS = {types.Integer: ['eq']}
-    
+
     # Or add new column type
     EXTRA_ALLOWED_FILTERS = {MyString: ['eq']}
 

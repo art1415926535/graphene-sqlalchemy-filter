@@ -18,10 +18,15 @@ from graphql import ResolveInfo
 from sqlalchemy import and_, cast, inspection, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
+from sqlalchemy.ext.associationproxy import (
+    AssociationProxy,
+    AssociationProxyInstance,
+)
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.relationships import RelationshipProperty
 from sqlalchemy.sql import sqltypes
 
 
@@ -258,6 +263,8 @@ class FilterSet(graphene.InputObjectType):
         OR: 'Conjunction of filters joined by ``OR``.',
         NOT: 'Negation of filters.',
     }
+
+    AUTO_TYPE_NAMES = {}
 
     class Meta:
         abstract = True
@@ -506,7 +513,7 @@ class FilterSet(graphene.InputObjectType):
         cls, model, field_filters: 'Dict[str, Union[Iterable[str], Any]]'
     ) -> dict:
         """
-        Generate GraphQL fields from SQLAlchemy model columns.
+        Generate GraphQL fields from SQLAlchemy model columns & relationships.
 
         Args:
             model: SQLAlchemy model.
@@ -518,47 +525,16 @@ class FilterSet(graphene.InputObjectType):
 
         """
         graphql_filters = {}
-        filters_map = cls.ALLOWED_FILTERS
-        model_fields = cls._get_model_fields_data(model, field_filters.keys())
-
-        for field_name, field_object in model_fields.items():
-            column_type = field_object['type']
-
-            expressions = field_filters[field_name]
-            if expressions == cls.ALL:
-                if column_type is None:
-                    raise ValueError(
-                        'Unsupported field type for automatic filter binding'
-                    )
-
-                type_class = column_type.__class__
-                try:
-                    expressions = filters_map[type_class].copy()
-                except KeyError:
-                    for type_, exprs in filters_map.items():
-                        if issubclass(type_class, type_):
-                            expressions = exprs.copy()
-                            break
-                    else:
-                        raise KeyError(
-                            'Unsupported column type. '
-                            'Hint: use EXTRA_ALLOWED_FILTERS.'
-                        )
-
-                if field_object['nullable']:
-                    expressions.append(cls.IS_NULL)
-
-            field_type = cls._get_gql_type_from_sqla_type(
-                column_type, field_object['column']
-            )
-
-            fields = cls._generate_filter_fields(
-                expressions, field_name, field_type, field_object['nullable']
-            )
-            for name, field in fields.items():
-                graphql_filters[name] = get_field_as(
-                    field, graphene.InputField
-                )
+        fields = cls._recursively_generate_filters(
+            model=model,
+            fields={},
+            parent_field=None,
+            parent=None,
+            field_filters=field_filters,
+            parents=[model.__tablename__],
+        )
+        for name, field in fields.items():
+            graphql_filters[name] = get_field_as(field, graphene.InputField)
 
         return graphql_filters
 
@@ -614,7 +590,42 @@ class FilterSet(graphene.InputObjectType):
                     'nullable': True,
                 }
 
-            elif isinstance(descr, InstrumentedAttribute):
+            elif isinstance(descr, AssociationProxy):
+                name = None
+                for attr in dir(model):
+                    field = getattr(model, attr)
+                    if (
+                        isinstance(field, AssociationProxyInstance)
+                        # We have to get the actual field name
+                        and not attr.startswith("_AssociationProxy")
+                        and field.value_attr
+                        == descr.for_class(model).value_attr
+                        and field.target_class
+                        == descr.for_class(model).target_class
+                    ):
+                        name = attr
+                        break
+                if name not in only_fields:
+                    continue
+                proxy_class = descr.for_class(model).target_class
+                proxy_attr = descr.for_class(model).value_attr
+                column = getattr(proxy_class, proxy_attr)
+                if hasattr(column, "mapper"):
+                    related_model = column.mapper.class_
+                    model_fields[name] = {
+                        'column': descr.for_class(model),
+                        'related_model': related_model,
+                        'type': 'relationship',
+                    }
+                else:
+                    print(column.nullable)
+                    model_fields[name] = {
+                        'column': column,
+                        'type': column.type,
+                        'nullable': column.nullable,
+                    }
+
+            elif isinstance(descr.property, ColumnProperty):
                 attr = descr.property
                 name = attr.key
                 if name not in only_fields:
@@ -625,6 +636,17 @@ class FilterSet(graphene.InputObjectType):
                     'column': column,
                     'type': column.type,
                     'nullable': column.nullable,
+                }
+
+            elif isinstance(descr.property, RelationshipProperty):
+                attr = descr.property
+                name = attr.key
+                if name not in only_fields:
+                    continue
+                model_fields[name] = {
+                    'column': attr,
+                    'related_model': attr.mapper.class_,
+                    'type': 'relationship',
                 }
 
         return model_fields
@@ -675,6 +697,126 @@ class FilterSet(graphene.InputObjectType):
         return filters
 
     @classmethod
+    def _recursively_generate_filters(
+        cls,
+        model: 'sqlalchemy.ext.declarative.api.DeclarativeMeta',
+        fields: dict,
+        parent_field: 'Union[str, None]',
+        parent: 'Union[dict, None]',
+        field_filters: dict,
+        parents: 'List[str]',
+    ) -> dict:
+        """
+        Recursively generate filters from the given fields.
+
+        Args:
+            model: The model.
+            fields: Holds the resulting filters.
+            parent_field: The parent field name.
+            parent: Parent for the resulting fields.
+            field_filters: The fields to turn into filters.
+            parents: List of parent fields to create unique type names.
+
+        Returns:
+            Dict.
+
+        """
+        model_fields = cls._get_model_fields_data(model, field_filters.keys())
+        filters_map = cls.ALLOWED_FILTERS
+
+        for field_name, field_object in model_fields.items():
+            column_type = field_object['type']
+            if column_type == 'relationship':
+                fields[field_name] = {}
+                cls._recursively_generate_filters(
+                    model=field_object['related_model'],
+                    fields=fields[field_name],
+                    parent_field=field_name,
+                    parent=fields,
+                    field_filters=field_filters[field_name],
+                    parents=parents + [field_name],
+                )
+                continue
+
+            expressions = field_filters[field_name]
+            if expressions == cls.ALL:
+                if column_type is None:
+                    raise ValueError(
+                        'Unsupported field type for automatic filter binding'
+                    )
+
+                type_class = column_type.__class__
+                try:
+                    expressions = filters_map[type_class].copy()
+                except KeyError:
+                    for type_, exprs in filters_map.items():
+                        if issubclass(type_class, type_):
+                            expressions = exprs.copy()
+                            break
+                    else:
+                        raise KeyError(
+                            'Unsupported column type. '
+                            'Hint: use EXTRA_ALLOWED_FILTERS.'
+                        )
+
+                if field_object['nullable']:
+                    expressions.append(cls.IS_NULL)
+
+            field_type = cls._get_gql_type_from_sqla_type(
+                column_type, field_object['column']
+            )
+
+            fields.update(
+                cls._generate_filter_fields(
+                    expressions,
+                    field_name,
+                    field_type,
+                    field_object['nullable'],
+                )
+            )
+
+        # Create a graphene type from this level
+        if parent is not None:
+            filters = {}
+            for name, field in fields.items():
+                filters[name] = get_field_as(field, graphene.InputField)
+
+            # Make sure the name of the type does not repeat globally
+            auto_type_name = "_".join(parents)
+            if auto_type_name in FilterSet.AUTO_TYPE_NAMES:
+                FilterSet.AUTO_TYPE_NAMES[auto_type_name] += 1
+                auto_type_name = (
+                    f"{auto_type_name}"
+                    f"{FilterSet.AUTO_TYPE_NAMES[auto_type_name]}"
+                )
+            else:
+                FilterSet.AUTO_TYPE_NAMES[auto_type_name] = 0
+
+            for op in [cls.AND, cls.OR, cls.NOT]:
+                doc = cls.DESCRIPTIONS.get(op)
+                graphql_name = cls.GRAPHQL_EXPRESSION_NAMES[op]
+
+                # Need to concatenate to keep the types unique
+                OperatorAutoType = type(
+                    f"{auto_type_name}_{op}",
+                    (graphene.InputObjectType,),
+                    filters,
+                )
+                filters[graphql_name] = graphene.InputField(
+                    cls.FILTER_OBJECT_TYPES[op](OperatorAutoType, False, doc),
+                    description=doc,
+                )
+
+            AutoType = type(
+                auto_type_name, (graphene.InputObjectType,), filters
+            )
+            parent[parent_field] = graphene.InputField(
+                AutoType, description=parent_field
+            )
+
+        return fields
+
+    @classmethod
     def filter(
         cls, info: ResolveInfo, query: Query, filters: 'FilterType'
     ) -> Query:
@@ -691,7 +833,6 @@ class FilterSet(graphene.InputObjectType):
 
         """
         context = info.context
-
         if isinstance(context, dict):
             context[cls._filter_aliases] = {}
         elif '__dict__' in context.__dir__():
@@ -705,11 +846,22 @@ class FilterSet(graphene.InputObjectType):
             ).format(type(context))
             warnings.warn(msg, RuntimeWarning)
 
-        query, sqla_filters = cls._translate_many_filter(info, query, filters)
-        if sqla_filters is not None:
-            query = query.filter(*sqla_filters)
-
-        return query
+        result = {"__root__": {}}
+        query = cls._translate_many_filter(
+            info=info,
+            query=query,
+            filters=filters,
+            join_by=and_,
+            parent="__root__",
+            result=result["__root__"],
+            parent_result=result,
+            model=cls.model,
+            parent_attr=None,
+        )
+        if not isinstance(result["__root__"], dict):
+            return query.filter(result["__root__"])
+        else:
+            return query
 
     @classmethod
     @lru_cache(maxsize=500)
@@ -745,104 +897,190 @@ class FilterSet(graphene.InputObjectType):
         raise KeyError('Operator not found "{}"'.format(graphql_field))
 
     @classmethod
-    def _translate_filter(
-        cls, info: ResolveInfo, query: Query, key: str, value: 'Any'
-    ) -> 'Tuple[Query, Any]':
-        """
-        Translate GraphQL to SQLAlchemy filters.
-
-        Args:
-            info: GraphQL resolve info.
-            query: SQLAlchemy query.
-            key: Filter key: model field, 'or', 'and', 'not', custom filter.
-            value: Filter value.
-
-        Returns:
-            SQLAlchemy clause.
-
-        """
-        if key in cls._custom_filters:
-            filter_name = key + '_filter'
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', SAWarning)
-                clause = getattr(cls, filter_name)(info, query, value)
-                if isinstance(clause, tuple):
-                    query, clause = clause
-
-            return query, clause
-
-        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.AND]:
-            return cls._translate_many_filter(info, query, value, and_)
-
-        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.OR]:
-            return cls._translate_many_filter(info, query, value, or_)
-
-        if key == cls.GRAPHQL_EXPRESSION_NAMES[cls.NOT]:
-            return cls._translate_many_filter(
-                info, query, value, lambda *x: not_(and_(*x))
-            )
-
-        field, expression = cls._split_graphql_field(key)
-        filter_function = cls.FILTER_FUNCTIONS[expression]
-
-        try:
-            model_field = getattr(cls.model, field)
-        except AttributeError:
-            raise KeyError('Field not found: ' + field)
-
-        model_field_type = getattr(model_field, 'type', None)
-        is_enum = isinstance(model_field_type, sqltypes.Enum)
-        if is_enum and model_field_type.enum_class:
-            if isinstance(value, list):
-                value = [model_field_type.enum_class(v) for v in value]
-            else:
-                value = model_field_type.enum_class(value)
-
-        clause = filter_function(model_field, value)
-        return query, clause
-
-    @classmethod
     def _translate_many_filter(
         cls,
         info: ResolveInfo,
         query: Query,
         filters: 'Union[List[FilterType], FilterType]',
-        join_by: 'Callable' = None,
-    ) -> 'Tuple[Query, Any]':
+        join_by: 'Callable',
+        parent: str,
+        result: dict,
+        parent_result: dict,
+        model: 'sqlalchemy.ext.declarative.api.DeclarativeMeta',
+        parent_attr: (
+            'Union[sqlalchemy.orm.attributes.InstrumentedAttribute, None]'
+        ),
+        expression_type: str = None,
+    ) -> 'Query':
         """
-        Translate several filters.
+        Recursively translate filters.
 
         Args:
             info: GraphQL resolve info.
             query: SQLAlchemy query.
             filters: GraphQL filters.
             join_by: Join translated filters.
+            parent: The parent key.
+            result: The result dict.
+            parent_result: Parent for the result.
+            model: The model to translate.
+            parent_attr: The parent attribute (for relationships).
+            expression_type: Either 'any' or 'has' for relationships.
 
         Returns:
-            SQLAlchemy clause.
+            Query.
 
         """
-        result = []
+        join_by_map = {
+            "and": and_,
+            "or": or_,
+            "not": lambda *x: not_(and_(*x)),
+        }
+        for key, value in filters.items():
 
-        # Filters from 'and', 'or', 'not'.
-        if isinstance(filters, list):
-            for f in filters:
-                query, local_filters = cls._translate_many_filter(
-                    info, query, f, and_
-                )
-                if local_filters is not None:
-                    result.append(local_filters)
+            if key in cls._custom_filters:
+                filter_name = key + '_filter'
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', SAWarning)
+                    clause = getattr(cls, filter_name)(info, query, value)
+                    if isinstance(clause, tuple):
+                        query, clause = clause
+                result[key] = clause
+                continue
 
-        else:
-            for k, v in filters.items():
-                query, r = cls._translate_filter(info, query, k, v)
-                if r is not None:
-                    result.append(r)
+            if key in ("and", "or", "not"):
+                result.setdefault(key, {})
+                if key in ("and", "or"):
+                    for op_key, op_filters in enumerate(value):
+                        result[key].setdefault(op_key, {})
+                        query = cls._translate_many_filter(
+                            info=info,
+                            query=query,
+                            filters=op_filters,
+                            join_by=and_,
+                            parent=op_key,
+                            result=result[key][op_key],
+                            parent_result=result[key],
+                            model=model,
+                            parent_attr=parent_attr,
+                            expression_type=expression_type,
+                        )
+                    result[key] = join_by_map[key](
+                        *[
+                            v
+                            for v in result[key].values()
+                            if not isinstance(v, dict)
+                        ]
+                    )
+                else:
+                    query = cls._translate_many_filter(
+                        info=info,
+                        query=query,
+                        filters=value,
+                        join_by=join_by_map[key],
+                        parent=key,
+                        result=result[key],
+                        parent_result=result,
+                        model=model,
+                        parent_attr=parent_attr,
+                        expression_type=expression_type,
+                    )
+                continue
 
+            field, expression = cls._split_graphql_field(key)
+            filter_function = cls.FILTER_FUNCTIONS[expression]
+
+            if isinstance(value, dict) and expression != "range":
+                result.setdefault(key, {})
+                inspected = inspection.inspect(model)
+                for descr in inspected.all_orm_descriptors:
+                    if isinstance(
+                        getattr(descr, "property", None), RelationshipProperty
+                    ):
+                        if descr.key == key:
+                            expression_type_ = "has"
+                            if getattr(model, key).property.uselist:
+                                expression_type_ = "any"
+                            query = cls._translate_many_filter(
+                                info=info,
+                                query=query,
+                                filters=value,
+                                join_by=and_,
+                                parent=key,
+                                result=result[key],
+                                parent_result=result,
+                                model=descr.mapper.class_,
+                                parent_attr=getattr(model, key),
+                                expression_type=expression_type_,
+                            )
+                            break
+                    elif isinstance(descr, AssociationProxy):
+                        parent_attr_ = getattr(model, key)
+                        if (
+                            isinstance(parent_attr_, AssociationProxyInstance)
+                            and parent_attr_.value_attr
+                            == descr.for_class(model).value_attr
+                            and parent_attr_.target_class
+                            == descr.for_class(model).target_class
+                        ):
+                            proxy_class = descr.for_class(model).target_class
+                            proxy_attr = descr.for_class(model).value_attr
+                            related_model = getattr(
+                                proxy_class, proxy_attr
+                            ).mapper.class_
+
+                            expression_type_ = "has"
+                            if getattr(
+                                model, descr.target_collection
+                            ).property.uselist:
+                                expression_type_ = "any"
+
+                            query = cls._translate_many_filter(
+                                info=info,
+                                query=query,
+                                filters=value,
+                                join_by=and_,
+                                parent=key,
+                                result=result[key],
+                                parent_result=result,
+                                model=related_model,
+                                parent_attr=getattr(model, key),
+                                expression_type=expression_type_,
+                            )
+                            break
+            else:
+                try:
+                    model_field = getattr(model, field)
+                except AttributeError:
+                    raise KeyError('Field not found: ' + field)
+
+                model_field_type = getattr(model_field, 'type', None)
+                is_enum = isinstance(model_field_type, sqltypes.Enum)
+                if is_enum and model_field_type.enum_class:
+                    if isinstance(value, list):
+                        value = [model_field_type.enum_class(v) for v in value]
+                    else:
+                        value = model_field_type.enum_class(value)
+
+                result[key] = filter_function(getattr(model, field), value)
+
+        # Join this level of filters and store under the parent key
         if not result:
-            return query, None
-
-        if join_by is None:
-            return query, result
-
-        return query, join_by(*result)
+            return query
+        if parent_attr is None:
+            parent_result[parent] = join_by(
+                *[v for v in result.values() if not isinstance(v, dict)]
+            )
+        elif expression_type == "any":
+            parent_result[parent] = parent_attr.any(
+                join_by(
+                    *[v for v in result.values() if not isinstance(v, dict)]
+                )
+            )
+        else:
+            parent_result[parent] = parent_attr.has(
+                join_by(
+                    *[v for v in result.values() if not isinstance(v, dict)]
+                )
+            )
+        return query

@@ -6,7 +6,7 @@ from graphene_sqlalchemy_filter.connection_field import (
     graphene_sqlalchemy_version_lt_2_1_2,
 )
 from tests.graphql_objects import schema
-from tests.models import Group, Membership, User
+from tests.models import Assignment, Group, Membership, Task, User
 from tests.utils import SQLAlchemyQueryCounter
 
 
@@ -80,6 +80,31 @@ def add_users_to_new_groups(session, users):
     session.bulk_save_objects(memberships, return_defaults=True)
     session.flush()
     return groups
+
+
+def add_tasks(session):
+    tasks = [
+        Task(name='Write code'),
+        Task(name='Write documentation'),
+        Task(name='Make breakfast'),
+    ]
+    session.bulk_save_objects(tasks, return_defaults=True)
+    session.flush()
+
+    return tasks
+
+
+def assign_users_to_tasks(session, users):
+    tasks = add_tasks(session)
+
+    assignments = [
+        Assignment(user_id=users[0].id, task_id=tasks[0].id, active=True),
+        Assignment(user_id=users[0].id, task_id=tasks[1].id, active=False),
+        Assignment(user_id=users[1].id, task_id=tasks[2].id, active=True),
+    ]
+    session.bulk_save_objects(assignments, return_defaults=True)
+    session.flush()
+    return assignments
 
 
 def test_response_without_filters(session):
@@ -322,3 +347,50 @@ def test_nested_response_with_recursive_model(session):
     assert len(group_0_sub_groups_edges) == 2
     sub_group_name = group_0_sub_groups_edges[0]['node']['name']
     assert sub_group_name == 'group_2'
+
+
+def test_relationship_filtering(session):
+    users = add_users(session)
+    assign_users_to_tasks(session, users)
+    session.commit()
+
+    request_string = """{
+        field(filters: {
+            assignments: {
+                 and: [
+                    {
+                         task: {
+                            name: "Write code",
+                        }
+                    },
+                    {
+                        active: true
+                    }
+                ]
+            }
+        }){
+            edges{
+                node{
+                    username
+                    assignments{
+                        edges{
+                            node{
+                                active
+                                task {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }"""
+
+    execution_result = schema.execute(
+        request_string, context={'session': session}
+    )
+    edges = execution_result.data["field"]["edges"]
+    assert len(execution_result.data["field"]["edges"]) == 1
+    assert edges[0]["node"]["username"] == "user_1"
+    assert len(edges[0]["node"]["assignments"]["edges"]) == 2

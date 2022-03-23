@@ -15,7 +15,7 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 from graphql import ResolveInfo
 
 # Database
-from sqlalchemy import and_, cast, inspection, not_, or_, types
+from sqlalchemy import and_, cast, inspection, not_, or_, types, func
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -145,6 +145,7 @@ class FilterSet(graphene.InputObjectType):
     CONTAINS = 'contains'
     CONTAINED_BY = 'contained_by'
     OVERLAP = 'overlap'
+    ANY = 'any'
 
     AND = 'and'
     OR = 'or'
@@ -169,6 +170,7 @@ class FilterSet(graphene.InputObjectType):
         AND: AND,
         OR: OR,
         NOT: NOT,
+        ANY: ANY,
     }
 
     ALLOWED_FILTERS = {
@@ -176,7 +178,7 @@ class FilterSet(graphene.InputObjectType):
         types.Date: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Time: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.DateTime: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
-        types.String: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
+        types.String: [EQ, NE, LIKE, ILIKE, IN, NOT_IN, ANY],
         TSVectorType: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
         types.Integer: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Numeric: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
@@ -218,6 +220,7 @@ class FilterSet(graphene.InputObjectType):
         CONTAINS: lambda field, v: field.contains(cast(v, field.type)),
         CONTAINED_BY: lambda field, v: field.contained_by(cast(v, field.type)),
         OVERLAP: lambda field, v: field.overlap(cast(v, field.type)),
+        ANY: lambda field, v: field == func.any(v),
     }
 
     FILTER_OBJECT_TYPES = {

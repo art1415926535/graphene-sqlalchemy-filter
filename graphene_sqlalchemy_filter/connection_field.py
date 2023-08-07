@@ -25,8 +25,7 @@ if MYPY:
         Type,
         Union,
     )  # noqa: F401; pragma: no cover
-    # from graphql import ResolveInfo  # noqa: F401; pragma: no cover
-    from graphql.type import GraphQLResolveInfo as ResolveInfo  # noqa: F401; pragma: no cover
+    # from graphql import ResolveInfo  # noqa: F401; pragma: no cover    
     from graphene.relay import Connection  # noqa: F401; pragma: no cover
     from sqlalchemy.orm import Query  # noqa: F401; pragma: no cover
     from .filters import FilterSet  # noqa: F401; pragma: no cover
@@ -36,6 +35,10 @@ graphene_sqlalchemy_version_lt_2_1_2 = tuple(
     map(int, graphene_sqlalchemy.__version__.split('.')[:2])
 ) < (2, 1)
 
+if graphene_sqlalchemy_version_lt_2_1_2:
+    from graphql import ResolveInfo
+else:
+    from graphql.type import GraphQLResolveInfo as ResolveInfo
 
 
 from graphene_sqlalchemy.fields import default_connection_field_factory
@@ -50,9 +53,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
     factory: 'Union[FilterableFieldFactory, Callable, None]' = None
     filters: dict = {}
 
-    def __init_subclass__(cls):
-        # if graphene_sqlalchemy_version_lt_2_1_2:
-        #     return  # pragma: no cover
+    def __init_subclass__(cls):        
 
         if cls.filters and cls.factory is None:
             cls.factory = FilterableFieldFactory(cls.filters)

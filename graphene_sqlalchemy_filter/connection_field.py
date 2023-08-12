@@ -31,11 +31,11 @@ if MYPY:
     from .filters import FilterSet  # noqa: F401; pragma: no cover
 
 
-graphene_sqlalchemy_version_lt_2_1_2 = tuple(
+graphene_sqlalchemy_version_lt_2_1 = tuple(
     map(int, graphene_sqlalchemy.__version__.split('.')[:2])
 ) < (2, 1)
 
-if graphene_sqlalchemy_version_lt_2_1_2:
+if graphene_sqlalchemy_version_lt_2_1:
     from graphql import ResolveInfo
 else:
     from graphql.type import GraphQLResolveInfo as ResolveInfo
@@ -101,8 +101,10 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
             FilterSet class from field args.
 
         """
-        
-        field_name = info.field_name#info.field_asts[0].name.value
+        if graphene_sqlalchemy_version_lt_2_1:
+            field_name = info.field_asts[0].name.value
+        else:    
+            field_name = info.field_name
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type
@@ -229,7 +231,10 @@ class ModelLoader(dataloader.DataLoader):
 
         """
 
-        field_name = info.field_name#info.field_asts[0].name.value
+        if graphene_sqlalchemy_version_lt_2_1:
+            field_name = info.field_asts[0].name.value
+        else:    
+            field_name = info.field_name        
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type

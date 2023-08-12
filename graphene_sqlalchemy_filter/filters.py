@@ -13,11 +13,11 @@ from graphene.types.utils import get_field_as
 from graphene_sqlalchemy import __version__ as gqls_version
 from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 
-graphene_sqlalchemy_version_lt_2_1_2 = tuple(
+graphene_sqlalchemy_version_lt_2_1 = tuple(
     map(int, graphene_sqlalchemy.__version__.split('.')[:2])
 ) < (2, 1)
 
-if graphene_sqlalchemy_version_lt_2_1_2:
+if graphene_sqlalchemy_version_lt_2_1:
     from graphql import ResolveInfo
 else:
     from graphql.type import GraphQLResolveInfo as ResolveInfo

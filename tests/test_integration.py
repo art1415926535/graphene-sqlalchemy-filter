@@ -3,7 +3,7 @@ import pytest
 
 # Project
 from graphene_sqlalchemy_filter.connection_field import (
-    graphene_sqlalchemy_version_lt_2_1_2,
+    graphene_sqlalchemy_version_lt_2_1,
 )
 from tests.graphql_objects import schema
 from tests.models import Group, Membership, User
@@ -175,7 +175,7 @@ def test_nested_response_without_filters(session):
                 }
             }
         }"""
-    if graphene_sqlalchemy_version_lt_2_1_2:
+    if graphene_sqlalchemy_version_lt_2_1:
         query_count = 8  # default
     else:
         query_count = 5  # graphene_sqlalchemy_filter.ModelLoader
@@ -224,7 +224,7 @@ def test_nested_response_without_filters(session):
 
 
 @pytest.mark.skipif(
-    graphene_sqlalchemy_version_lt_2_1_2, reason='not supported'
+    graphene_sqlalchemy_version_lt_2_1, reason='not supported'
 )
 def test_nested_response_with_filters(session):
     users = add_users(session)
@@ -273,7 +273,7 @@ def test_nested_response_with_filters(session):
 
 
 @pytest.mark.skipif(
-    graphene_sqlalchemy_version_lt_2_1_2, reason='not supported'
+    graphene_sqlalchemy_version_lt_2_1, reason='not supported'
 )
 def test_nested_response_with_recursive_model(session):
     add_groups(session, with_parent_group=True)

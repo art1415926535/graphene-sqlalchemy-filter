@@ -12,7 +12,15 @@ from graphene.types.inputobjecttype import InputObjectTypeOptions
 from graphene.types.utils import get_field_as
 from graphene_sqlalchemy import __version__ as gqls_version
 from graphene_sqlalchemy.converter import convert_sqlalchemy_type
-from graphql import ResolveInfo
+
+graphene_sqlalchemy_version_lt_2_1 = tuple(
+    map(int, graphene_sqlalchemy.__version__.split('.')[:2])
+) < (2, 1)
+
+if graphene_sqlalchemy_version_lt_2_1:
+    from graphql import ResolveInfo
+else:
+    from graphql.type import GraphQLResolveInfo as ResolveInfo
 
 # Database
 from sqlalchemy import and_, cast, inspection, not_, or_, types
@@ -55,7 +63,7 @@ except ImportError:
     TSVectorType = object
 
 
-gqls_version = tuple([int(x) for x in gqls_version.split('.')])
+gqls_version = tuple([int(x) for x in gqls_version.split('.')[:2]])
 
 
 def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
@@ -307,6 +315,8 @@ class FilterSet(graphene.InputObjectType):
         _meta.fields.update(filters_fields)
 
         default_filter_keys = set(filters_fields.keys())
+
+        
 
         # Add custom filter objects.
         super().__init_subclass_with_meta__(_meta=_meta, **options)

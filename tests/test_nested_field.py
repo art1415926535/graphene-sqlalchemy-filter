@@ -12,14 +12,14 @@ from graphene_sqlalchemy_filter.connection_field import (
     FilterableConnectionField,
     ModelLoader,
     NestedFilterableConnectionField,
-    graphene_sqlalchemy_version_lt_2_1_2,
+    graphene_sqlalchemy_version_lt_2_1,
 )
 
 # This module
 from .models import Article, Author, Group, User
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
+@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1, reason='not used')
 @pytest.mark.skipif(
     # https://stackoverflow.com/questions/45335276/sqlite-select-query-including-a-values-in-the-where-clause-returns-correctly-w
     sqlite3.sqlite_version_info < (3, 15, 2),
@@ -55,7 +55,7 @@ def test_composite_pk(info, session):
     assert a2.text == 'abc'
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
+@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1, reason='not used')
 def test_custom_filter_arg():
     custom_filter_arg = 'where'
 
@@ -69,7 +69,7 @@ def test_custom_filter_arg():
     assert model_loader_class.filter_arg == custom_filter_arg
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
+@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1, reason='not used')
 def test_model_dataloader_creation(info):
     info.path = ['user', 'edges', 0, 'node', 'groups']
     info.field_name = 'groups'
@@ -94,7 +94,7 @@ def test_model_dataloader_creation(info):
     assert model_loader_1 is not model_loader_3
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason='not used')
+@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1, reason='not used')
 def test_flask_context(info):
     class Request:
         pass

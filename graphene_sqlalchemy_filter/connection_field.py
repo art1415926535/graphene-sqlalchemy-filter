@@ -25,21 +25,22 @@ if MYPY:
         Type,
         Union,
     )  # noqa: F401; pragma: no cover
-    from graphql import ResolveInfo  # noqa: F401; pragma: no cover
     from graphene.relay import Connection  # noqa: F401; pragma: no cover
     from sqlalchemy.orm import Query  # noqa: F401; pragma: no cover
     from .filters import FilterSet  # noqa: F401; pragma: no cover
 
 
-graphene_sqlalchemy_version_lt_2_1_2 = tuple(
-    map(int, graphene_sqlalchemy.__version__.split('.'))
-) < (2, 1, 2)
+graphene_sqlalchemy_version_lt_2_1 = tuple(
+    map(int, graphene_sqlalchemy.__version__.split('.')[:2])
+) < (2, 1)
 
-
-if graphene_sqlalchemy_version_lt_2_1_2:
-    default_connection_field_factory = None  # pragma: no cover
+if graphene_sqlalchemy_version_lt_2_1:
+    from graphql import ResolveInfo  # noqa: F401; pragma: no cover
 else:
-    from graphene_sqlalchemy.fields import default_connection_field_factory
+    from graphql.type import GraphQLResolveInfo as ResolveInfo  # noqa: F401; pragma: no cover
+
+
+from graphene_sqlalchemy.fields import default_connection_field_factory
 
 
 DEFAULT_FILTER_ARG: str = 'filters'
@@ -51,9 +52,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
     factory: 'Union[FilterableFieldFactory, Callable, None]' = None
     filters: dict = {}
 
-    def __init_subclass__(cls):
-        if graphene_sqlalchemy_version_lt_2_1_2:
-            return  # pragma: no cover
+    def __init_subclass__(cls):        
 
         if cls.filters and cls.factory is None:
             cls.factory = FilterableFieldFactory(cls.filters)
@@ -101,10 +100,14 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+        if graphene_sqlalchemy_version_lt_2_1:
+            field_name = info.field_asts[0].name.value
+        else:    
+            field_name = info.field_name
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type
+        
         return filters
 
 
@@ -226,7 +229,11 @@ class ModelLoader(dataloader.DataLoader):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+
+        if graphene_sqlalchemy_version_lt_2_1:
+            field_name = info.field_asts[0].name.value
+        else:    
+            field_name = info.field_name        
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: 'FilterSet' = filters_type.graphene_type

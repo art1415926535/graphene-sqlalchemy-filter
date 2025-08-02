@@ -1,27 +1,23 @@
-# GraphQL
+from sqlalchemy import Integer, and_
+
 import graphene
 from graphene import Connection, Node
 from graphene_sqlalchemy import SQLAlchemyObjectType
 
-# Database
-from sqlalchemy import Integer, and_
-
-# Project
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
-from tests import gqls_version
+from graphene_sqlalchemy_filter.connection_field import gqls_version
 
-# This module
 from .models import Article, Author, Group, Membership, User
 
 
 class BaseFilter(FilterSet):
     EXTRA_EXPRESSIONS = {
-        'zero': {
-            'graphql_name': 'eq_zero',
-            'for_types': [Integer],
-            'filter': lambda f, v: f == 0 if v else f != 0,
-            'input_type': (lambda t, n, d: graphene.Boolean(nullable=False)),
-            'description': 'Equal to zero.',
+        "zero": {
+            "graphql_name": "eq_zero",
+            "for_types": [Integer],
+            "filter": lambda f, v: f == 0 if v else f != 0,
+            "input_type": (lambda t, n, d: graphene.Boolean(nullable=False)),
+            "description": "Equal to zero.",
         }
     }
 
@@ -30,36 +26,35 @@ class BaseFilter(FilterSet):
 
 
 USER_FILTER_FIELDS = {
-    'id': ['eq'],
-    'username': ['eq', 'ne', 'in', 'ilike'],
-    'balance': ['eq', 'ne', 'gt', 'lt', 'range', 'is_null'],
-    'is_active': ['eq', 'ne'],
-    'username_hybrid_property': ['eq', 'ne', 'in'],
+    "id": ["eq"],
+    "username": ["eq", "ne", "in", "ilike"],
+    "balance": ["eq", "ne", "gt", "lt", "range", "is_null"],
+    "is_active": ["eq", "ne"],
+    "username_hybrid_property": ["eq", "ne", "in"],
 }
 
 
 if gqls_version >= (2, 2, 0):
-    USER_FILTER_FIELDS['status'] = ['eq']
+    USER_FILTER_FIELDS["status"] = ["eq"]
 
 
 class UserFilter(BaseFilter):
-    is_admin = graphene.Boolean(description='User name = admin')
-    is_moderator = graphene.Boolean(description='User is a moderator')
+    is_admin = graphene.Boolean(description="User name = admin")
+    is_moderator = graphene.Boolean(description="User is a moderator")
     member_of_group = graphene.String(
-        description='Member of the group that is named'
+        description="Member of the group that is named"
     )
 
     @staticmethod
     def is_admin_filter(info, query, value):
         """Simple filter return only clause."""
         if value:
-            return User.username == 'admin'
-        else:
-            return User.username != 'admin'
+            return User.username == "admin"
+        return User.username != "admin"
 
     @classmethod
     def is_moderator_filter(cls, info, query, value):
-        membership = cls.aliased(query, Membership, name='is_moderator')
+        membership = cls.aliased(query, Membership, name="is_moderator")
 
         query = query.join(
             membership,
@@ -77,8 +72,8 @@ class UserFilter(BaseFilter):
 
     @classmethod
     def member_of_group_filter(cls, info, query, value):
-        membership = cls.aliased(query, Membership, name='member_of')
-        group = cls.aliased(query, Group, name='of_group')
+        membership = cls.aliased(query, Membership, name="member_of")
+        group = cls.aliased(query, Group, name="of_group")
 
         query = query.join(membership, User.memberships).join(
             group, membership.group
@@ -94,31 +89,25 @@ class UserFilter(BaseFilter):
 class MembershipFilter(BaseFilter):
     class Meta:
         model = Membership
-        fields = {'is_moderator': [...]}
+        fields = {"is_moderator": [...]}
 
 
 class GroupFilter(BaseFilter):
     class Meta:
         model = Group
-        fields = {'name': [...], 'parent_group_id': ['is_null']}
+        fields = {"name": [...], "parent_group_id": ["is_null"]}
 
 
 class ArticleFilter(FilterSet):
     class Meta:
         model = Article
-        fields = {
-            'author_first': [...],
-            'author_last': [...],
-        }
+        fields = {"author_first": [...], "author_last": [...]}
 
 
 class AuthorFilter(FilterSet):
     class Meta:
         model = Author
-        fields = {
-            'author_first': [...],
-            'author_last': [...],
-        }
+        fields = {"author_first": [...], "author_last": [...]}
 
 
 class MyFilterableConnectionField(FilterableConnectionField):
@@ -170,7 +159,7 @@ class GroupConnection(Connection):
 class AuthorNode(SQLAlchemyObjectType):
     class Meta:
         model = Author
-        interfaces = (graphene.relay.Node,)
+        interfaces = (graphene.Node,)
         connection_field_factory = MyFilterableConnectionField.factory
 
 
@@ -182,7 +171,7 @@ class AuthorConnection(Connection):
 class ArticleNode(SQLAlchemyObjectType):
     class Meta:
         model = Article
-        interfaces = (graphene.relay.Node,)
+        interfaces = (graphene.Node,)
         connection_field_factory = MyFilterableConnectionField.factory
 
 

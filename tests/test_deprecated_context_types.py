@@ -1,16 +1,22 @@
-# Third Party
+import warnings
+
 import pytest
 
-# Project
 from tests import models
 from tests.graphql_objects import UserFilter
+
+
+_warning_msg = (
+    "Graphene resolve info is deprecated, use SQLAlchemy query. "
+    'Hint: cls.aliased\\(query, Membership, name="is_moderator"\\)'
+)
 
 
 class FilterAliasedResolveInfo(UserFilter):
     @classmethod
     def is_moderator_filter(cls, info, query, value):
         cls.aliased(  # deprecation warning
-            info, models.Membership, name='is_moderator'
+            info, models.Membership, name="is_moderator"
         )
         return query, True
 
@@ -20,10 +26,9 @@ def test_dict_context(info_and_user_query):
     info.context = {}
     filters = {}
 
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         UserFilter.filter(info, user_query, filters)
-        if record:
-            pytest.fail('No warnings expected!')
 
 
 def test_object_context(info_and_user_query):
@@ -35,10 +40,9 @@ def test_object_context(info_and_user_query):
     info.context = Context()
     filters = {}
 
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         UserFilter.filter(info, user_query, filters)
-        if record:
-            pytest.fail('No warnings expected!')
 
 
 def test_slots_context(info_and_user_query):
@@ -57,9 +61,8 @@ def test_slots_context(info_and_user_query):
 def test_aliased_with_dict_context(info_and_user_query):
     info, user_query = info_and_user_query
     info.context = {}
-    filters = {'is_moderator': True}
-
-    with pytest.warns(DeprecationWarning):
+    filters = {"is_moderator": True}
+    with pytest.warns(DeprecationWarning, match=_warning_msg):
         FilterAliasedResolveInfo.filter(info, user_query, filters)
 
 
@@ -70,12 +73,8 @@ def test_aliased_with_object_context(info_and_user_query):
         pass
 
     info.context = Context()
-    filters = {'is_moderator': True}
-    msg = (
-        r'Graphene resolve info is deprecated, use SQLAlchemy query. '
-        r'Hint: cls.aliased\(query, Membership, name="is_moderator"\)'
-    )
-    with pytest.warns(DeprecationWarning, match=msg):
+    filters = {"is_moderator": True}
+    with pytest.warns(DeprecationWarning, match=_warning_msg):
         FilterAliasedResolveInfo.filter(info, user_query, filters)
 
 
@@ -86,7 +85,11 @@ def test_aliased_with_slots_context(info_and_user_query):
         __slots__ = ()
 
     info.context = Context()
-    filters = {'is_moderator': True}
+    filters = {"is_moderator": True}
 
-    with pytest.warns(RuntimeWarning), pytest.raises(RuntimeError):
+    with (
+        pytest.warns(RuntimeWarning),
+        pytest.raises(RuntimeError),
+        pytest.warns(DeprecationWarning, match=_warning_msg),
+    ):
         FilterAliasedResolveInfo.filter(info, user_query, filters)

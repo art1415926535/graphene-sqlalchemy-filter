@@ -124,9 +124,13 @@ max-complexity = 12
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:The 'context' alias has been deprecated. Please use 'context_value' instead.:DeprecationWarning",
+]
+
 [tool.coverage.report]
 show_missing = true
-
 
 [tool.tox]
 legacy_tox_ini = """

@@ -1,29 +1,28 @@
-# Third Party
 import pytest
 
-# GraphQL
 import graphene
 from graphene_sqlalchemy import get_query
 
-# Project
 from graphene_sqlalchemy_filter import FilterSet
-from tests import gqls_version, models
+from graphene_sqlalchemy_filter.connection_field import gqls_version
+
+from tests import models
 
 
-@pytest.mark.skipif(gqls_version < (2, 2, 0), reason='not supported')
+@pytest.mark.skipif(gqls_version < (2, 2, 0), reason="not supported")
 def test_enum_filter_without_relay(session):
-    """https://github.com/art1415926535/graphene-sqlalchemy-filter/issues/28"""
+    """https://github.com/art1415926535/graphene-sqlalchemy-filter/issues/28"""  # noqa: D415
     online = models.StatusEnum.online
     users = [
-        models.User(username='user_1', is_active=True, status=online),
-        models.User(username='user_2', is_active=True),
+        models.User(username="user_1", is_active=True, status=online),
+        models.User(username="user_2", is_active=True),
     ]
     session.bulk_save_objects(users)
 
     class UserFilter(FilterSet):
         class Meta:
             model = models.User
-            fields = {'status': ['eq', 'in']}
+            fields = {"status": ["eq", "in"]}
 
     class UserType(graphene.ObjectType):
         username = graphene.String()
@@ -47,10 +46,10 @@ def test_enum_filter_without_relay(session):
         }
     }"""
     execution_result = schema.execute(
-        request_string, context={'session': session}
+        request_string, context={"session": session}
     )
 
     assert not execution_result.errors
     assert not execution_result.invalid
 
-    assert execution_result.data == {'allUsers': [{'username': 'user_1'}]}
+    assert execution_result.data == {"allUsers": [{"username": "user_1"}]}

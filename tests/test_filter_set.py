@@ -1,17 +1,12 @@
-# Standard Library
 from copy import deepcopy
 
-# Third Party
 import pytest
-
-# GraphQL
-import graphene
-
-# Database
 from sqlalchemy import Column, types
 
-# Project
+import graphene
+
 from graphene_sqlalchemy_filter import FilterSet, filters
+
 from tests import models
 from tests.graphql_objects import USER_FILTER_FIELDS, UserFilter
 from tests.models import Base
@@ -20,11 +15,11 @@ from tests.models import Base
 def test_custom_filter_field_type():
     filter_fields = deepcopy(UserFilter._meta.fields)
 
-    assert 'is_admin' in filter_fields
-    is_rich = filter_fields['is_admin']
+    assert "is_admin" in filter_fields
+    is_rich = filter_fields["is_admin"]
     assert isinstance(is_rich, graphene.InputField)
     assert is_rich.type is graphene.Boolean
-    del filter_fields['is_admin']
+    del filter_fields["is_admin"]
 
 
 def test_default_filter_field_types():
@@ -37,7 +32,7 @@ def test_default_filter_field_types():
             if graphql_op:
                 field += filters.DELIMITER + graphql_op
 
-            assert field in filter_fields, 'Field not found: ' + field
+            assert field in filter_fields, "Field not found: " + field
             assert isinstance(filter_fields[field], graphene.InputField)
             del filter_fields[field]
 
@@ -74,8 +69,8 @@ def test_not_filter_field_type():
 
 def test_number_filter_fields():
     user_filters = {
-        'username': ['eq', 'in', 'ilike'],
-        'balance': ['ne', 'gt', 'lt', 'range', 'is_null'],
+        "username": ["eq", "in", "ilike"],
+        "balance": ["ne", "gt", "lt", "range", "is_null"],
     }
 
     class F(UserFilter):
@@ -88,7 +83,7 @@ def test_number_filter_fields():
     # Add default filters.
     for values in user_filters.values():
         if values == F.ALL:
-            raise ValueError('Not supported in test')
+            raise ValueError("Not supported in test")
 
         required_count += len(values)
 
@@ -100,16 +95,16 @@ def test_shortcut():
     class F(FilterSet):
         class Meta:
             model = models.User
-            fields = {'is_active': [...]}
+            fields = {"is_active": [...]}
 
     filter_fields = set(F._meta.fields)
-    ok = {'is_active', 'is_active_ne', 'is_active_is_null', 'and', 'or', 'not'}
+    ok = {"is_active", "is_active_ne", "is_active_is_null", "and", "or", "not"}
 
     assert filter_fields == ok
 
 
 def test_meta_without_model():
-    ok = {'field', 'and', 'or', 'not'}
+    ok = {"field", "and", "or", "not"}
 
     class F1(FilterSet):
         field = graphene.Boolean()
@@ -129,11 +124,11 @@ def test_meta_without_model():
     filter_fields = set(F2._meta.fields)
     assert filter_fields == ok
 
-    with pytest.raises(AttributeError, match='Model not specified'):
+    with pytest.raises(AttributeError, match="Model not specified"):
 
         class F3(F1):
             class Meta:
-                fields = {'username': [...]}
+                fields = {"username": [...]}
 
 
 def test_old_extra_expression_register():
@@ -144,11 +139,11 @@ def test_old_extra_expression_register():
         return graphene.Boolean(nullable=False)
 
     class F(FilterSet):
-        EQ_ZERO = 'zero'
+        EQ_ZERO = "zero"
 
         # Add the name of the expression in GraphQL.
         GRAPHQL_EXPRESSION_NAMES = dict(
-            FilterSet.GRAPHQL_EXPRESSION_NAMES, zero='eq_zero'
+            FilterSet.GRAPHQL_EXPRESSION_NAMES, zero="eq_zero"
         )
 
         # Update allowed filters (used by shortcut).
@@ -166,7 +161,7 @@ def test_old_extra_expression_register():
         )
 
         # Description for the GraphQL schema.
-        DESCRIPTIONS = dict(FilterSet.DESCRIPTIONS, zero='Equal to zero.')
+        DESCRIPTIONS = dict(FilterSet.DESCRIPTIONS, zero="Equal to zero.")
 
         class Meta:
             abstract = True
@@ -174,25 +169,25 @@ def test_old_extra_expression_register():
     class UserFilter(F):
         class Meta:
             model = models.User
-            fields = {'balance': [...], 'id': ['zero']}
+            fields = {"balance": [...], "id": ["zero"]}
 
     filter_fields = set(UserFilter._meta.fields)
     ok = {
-        'balance',
-        'balance_gt',
-        'balance_gte',
-        'balance_in',
-        'balance_is_null',
-        'balance_lt',
-        'balance_lte',
-        'balance_ne',
-        'balance_not_in',
-        'balance_range',
-        'balance_eq_zero',
-        'id_eq_zero',
-        'and',
-        'not',
-        'or',
+        "balance",
+        "balance_gt",
+        "balance_gte",
+        "balance_in",
+        "balance_is_null",
+        "balance_lt",
+        "balance_lte",
+        "balance_ne",
+        "balance_not_in",
+        "balance_range",
+        "balance_eq_zero",
+        "id_eq_zero",
+        "and",
+        "not",
+        "or",
     }
     assert filter_fields == ok
 
@@ -203,14 +198,14 @@ def test_extra_expression():
 
     class BaseFilter(FilterSet):
         EXTRA_EXPRESSIONS = {
-            'zero': {
-                'graphql_name': 'eq_zero',
-                'for_types': [types.Integer, NewInt],
-                'filter': lambda f, v: f == 0 if v else f != 0,
-                'input_type': (
+            "zero": {
+                "graphql_name": "eq_zero",
+                "for_types": [types.Integer, NewInt],
+                "filter": lambda f, v: f == 0 if v else f != 0,
+                "input_type": (
                     lambda t, n, d: graphene.Boolean(nullable=False)
                 ),
-                'description': 'Equal to zero.',
+                "description": "Equal to zero.",
             }
         }
 
@@ -219,14 +214,14 @@ def test_extra_expression():
 
     class AnotherBaseFilter(FilterSet):
         EXTRA_EXPRESSIONS = {
-            'gte_zero': {  # Should not be found
-                'graphql_name': 'gte_zero',
-                'for_types': [types.Integer, NewInt],
-                'filter': lambda f, v: f > 0 if v else f <= 0,
-                'input_type': (
+            "gte_zero": {  # Should not be found
+                "graphql_name": "gte_zero",
+                "for_types": [types.Integer, NewInt],
+                "filter": lambda f, v: f > 0 if v else f <= 0,
+                "input_type": (
                     lambda t, n, d: graphene.Boolean(nullable=False)
                 ),
-                'description': 'Greater than zero.',
+                "description": "Greater than zero.",
             }
         }
 
@@ -236,50 +231,50 @@ def test_extra_expression():
     class AnotherUserFilter(AnotherBaseFilter):
         class Meta:
             model = models.User
-            fields = {'id': [...]}
+            fields = {"id": [...]}
 
     class UserFilter(BaseFilter):
         EXTRA_EXPRESSIONS = {
-            'ne_zero': {
-                'graphql_name': 'ne_zero',
-                'for_types': [types.Integer, NewInt],
-                'filter': lambda f, v: f != 0 if v else f == 0,
-                'input_type': (
+            "ne_zero": {
+                "graphql_name": "ne_zero",
+                "for_types": [types.Integer, NewInt],
+                "filter": lambda f, v: f != 0 if v else f == 0,
+                "input_type": (
                     lambda t, n, d: graphene.Boolean(nullable=False)
                 ),
-                'description': 'Not equal zero.',
+                "description": "Not equal zero.",
             }
         }
 
         class Meta:
             model = models.User
-            fields = {'balance': [...], 'id': ['zero']}
+            fields = {"balance": [...], "id": ["zero"]}
 
     filter_fields = set(UserFilter._meta.fields)
     ok = {
-        'balance',
-        'balance_gt',
-        'balance_gte',
-        'balance_in',
-        'balance_is_null',
-        'balance_lt',
-        'balance_lte',
-        'balance_ne',
-        'balance_not_in',
-        'balance_range',
-        'balance_eq_zero',  # Added by BaseFilter.
-        'balance_ne_zero',  # Added by UserFilter.
-        'id_eq_zero',  # Added by BaseFilter.
-        'and',
-        'not',
-        'or',
+        "balance",
+        "balance_gt",
+        "balance_gte",
+        "balance_in",
+        "balance_is_null",
+        "balance_lt",
+        "balance_lte",
+        "balance_ne",
+        "balance_not_in",
+        "balance_range",
+        "balance_eq_zero",  # Added by BaseFilter.
+        "balance_ne_zero",  # Added by UserFilter.
+        "id_eq_zero",  # Added by BaseFilter.
+        "and",
+        "not",
+        "or",
     }
     assert filter_fields == ok
 
 
 def test_sql_alchemy_subclass_column_types():
     class F(FilterSet):
-        ALLOWED_FILTERS = {types.Integer: ['eq', 'gt']}
+        ALLOWED_FILTERS = {types.Integer: ["eq", "gt"]}
 
         class Meta:
             abstract = True
@@ -288,20 +283,20 @@ def test_sql_alchemy_subclass_column_types():
         pass
 
     class TestModel(Base):
-        __tablename__ = 'test'
+        __tablename__ = "test"
 
         id = Column(types.SmallInteger, primary_key=True, autoincrement=True)
         text = Column(MyNVARCHAR)
 
     class TestFilter(F):
-        EXTRA_ALLOWED_FILTERS = {types.String: ['eq']}
+        EXTRA_ALLOWED_FILTERS = {types.String: ["eq"]}
 
         class Meta:
             model = TestModel
-            fields = {'id': [...], 'text': [...]}
+            fields = {"id": [...], "text": [...]}
 
     filter_fields = set(TestFilter._meta.fields)
-    ok = {'id', 'id_gt', 'text', 'text_is_null', 'and', 'not', 'or'}
+    ok = {"id", "id_gt", "text", "text_is_null", "and", "not", "or"}
 
     assert filter_fields == ok
 
@@ -313,10 +308,10 @@ def test_sql_alchemy_wrong_column_types():
         class Meta:
             abstract = True
 
-    msg = 'Unsupported column type. Hint: use EXTRA_ALLOWED_FILTERS.'
+    msg = "Unsupported column type. Hint: use EXTRA_ALLOWED_FILTERS."
     with pytest.raises(KeyError, match=msg):
 
         class TestFilter(F):
             class Meta:
                 model = models.User
-                fields = {'id': [...]}
+                fields = {"id": [...]}

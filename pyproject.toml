@@ -44,7 +44,7 @@ dev = [
   "ruff==0.12.7",
 ]
 
-ci = ["tox==4.28.4", "tox-gh-actions==3.3.0"]
+ci = ["tox==4.28.4", "coverage==7.10.1"]
 
 [tool.setuptools]
 include-package-data = true
@@ -126,7 +126,7 @@ convention = "google"
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    "ignore:The 'context' alias has been deprecated. Please use 'context_value' instead.:DeprecationWarning",
+  "ignore:The 'context' alias has been deprecated. Please use 'context_value' instead.:DeprecationWarning",
 ]
 
 [tool.coverage.report]
@@ -137,15 +137,6 @@ legacy_tox_ini = """
 [tox]
 envlist = py{39,310,311,312,313}-gs{2.1.0,2.2.0,2.3.0}, lint, coverage
 isolated_build = True
-
-
-[gh-actions]
-python =
-  3.9: py39
-  3.10: py310
-  3.11: py311
-  3.12: py312
-  3.13: py313
 
 
 [testenv]
@@ -204,5 +195,5 @@ setenv =
 commands =
   coverage erase
   coverage combine
-  coverage xml
+  coverage html
 """

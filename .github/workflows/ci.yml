@@ -1,86 +1,152 @@
 name: CI
-on: [push]
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*.*.*'
+  pull_request:
+    branches:
+      - master
+
 env:
-  DEFAULT_PYTHON_VERSION: 3.7
+  DEFAULT_PYTHON_VERSION: 3.13
 
 jobs:
   lint:
-    name: Lint
+    name: Lint 🧐
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Python ${{ env.DEFAULT_PYTHON_VERSION }}
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-      - name: Install nox
-        run: |
-          python -m pip install --upgrade pip
-          pip install nox
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Lint
-        run: |
-          nox -s lint
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.12.7
 
   test:
-    name: Test
+    name: Test 🤔
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
-    runs-on: ubuntu-latest
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        graphene-sqlalchemy-version: ['2.1.0', '2.2.0', '2.3.0']
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install nox
-      - name: Test
-        run: |
-          nox -s test -p ${{ matrix.python-version }}
+          python -m pip install .[ci]
 
-  coverage:
-    name: Coverage
+      - name: Set environment variable for Tox Python version
+        run: |
+          TOX_PYTHON_VERSION=${{ matrix.python-version }}
+          TOX_PYTHON_VERSION=${TOX_PYTHON_VERSION//.}
+          echo "TOX_ENV=py${TOX_PYTHON_VERSION}-gs${{ matrix.graphene-sqlalchemy-version }}" >> $GITHUB_ENV
+
+      - name: Test with tox
+        run: tox -e ${{ env.TOX_ENV }}
+
+      - name: Show files
+        run: |
+          ls -la .
+
+      - name: Generate xml coverage report
+        run: |
+          coverage combine
+          coverage xml
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v5
+        with:
+          files: "coverage.xml"
+          flags: ${{ env.TOX_ENV }}
+          verbose: true
+          use_oidc: true
+
+  build:
+    name: Build distribution 📦
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs:
+      - lint
+      - test
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Python ${{ env.DEFAULT_PYTHON_VERSION }}
-        uses: actions/setup-python@master
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-      - name: Generate coverage report
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        run: |
-          pip install -e .
-          pip install pytest "coverage<5.0.0" pytest-cov "coveralls==1.10.0"
-          pytest --cov=graphene_sqlalchemy_filter tests
-          coveralls
 
-  pypi:
-    name: Publish
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+
+      - name: Build a binary wheel and a source tarball
+        run: python -m build
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  publish-to-test-pypi:
+    name: Publish Python 🐍 distribution 📦 to Test PyPI
+    needs:
+      - build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/graphene-sqlalchemy-filter
+    permissions:
+      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Python ${{ env.DEFAULT_PYTHON_VERSION }}
-        uses: actions/setup-python@master
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
         with:
-          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-      - name: Create package
-        run: |
-          pip install wheel
-          python setup.py sdist bdist_wheel
-      - name: Publish package to PyPI
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.pypi_password }}
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/graphene-sqlalchemy-filter
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

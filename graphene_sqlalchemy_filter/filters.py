@@ -1,21 +1,13 @@
-# Standard Library
+from __future__ import annotations
+
 import contextlib
 import inspect
 import warnings
 from copy import deepcopy
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, Union
 
-# GraphQL
-import graphene
-from graphene.types.generic import GenericScalar
-from graphene.types.inputobjecttype import InputObjectTypeOptions
-from graphene.types.utils import get_field_as
-from graphene_sqlalchemy import __version__ as gqls_version
-from graphene_sqlalchemy.converter import convert_sqlalchemy_type
-from graphql import ResolveInfo
-
-# Database
-from sqlalchemy import and_, cast, inspection, not_, or_, types
+from sqlalchemy import Column, and_, cast, inspection, not_, or_, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -24,68 +16,60 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import sqltypes
 
-
-MYPY = False
-if MYPY:
-    from typing import (  # noqa: F401; pragma: no cover
-        Any,
-        Callable,
-        Dict,
-        Iterable,
-        List,
-        Type,
-        Tuple,
-        Union,
-    )
-    from sqlalchemy import Column  # noqa: F401; pragma: no cover
-    from sqlalchemy.orm.query import (  # noqa: F401; pragma: no cover
-        _MapperEntity,
-    )
-
-    FilterType = 'Dict[str, Any]'  # pragma: no cover
-
-    GRAPHENE_OBJECT_OR_CLASS = Union[  # pragma: no cover
-        graphene.ObjectType, Type[graphene.ObjectType]
-    ]
+import graphene
+from graphene.types.generic import GenericScalar
+from graphene.types.inputobjecttype import InputObjectTypeOptions
+from graphene.types.utils import get_field_as
+from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 
 
 try:
     from sqlalchemy_utils import TSVectorType
 except ImportError:
-    TSVectorType = object
+    TSVectorType: type[object] = object
 
 
-gqls_version = tuple([int(x) for x in gqls_version.split('.')])
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from sqlalchemy.orm.context import _MapperEntity
+
+    from graphql import ResolveInfo
 
 
-def _get_class(obj: 'GRAPHENE_OBJECT_OR_CLASS') -> 'Type[graphene.ObjectType]':
+FilterType = dict[str, Any]
+GrapgeneObjectOrClass = Union[graphene.ObjectType, type[graphene.ObjectType]]
+T = TypeVar("T")
+
+
+def _get_class(obj: GrapgeneObjectOrClass) -> type[graphene.ObjectType]:
     if inspect.isclass(obj):
         return obj
 
     if isinstance(obj, graphene.Field):  # only graphene-sqlalchemy==2.2.0
         return obj.type
 
-    return obj.__class__  # only graphene-sqlalchemy<2.2.0; pragma: no cover
+    return obj.__class__  # only graphene-sqlalchemy<2.2.0
 
 
-def _eq_filter(field: 'Column', value: 'Any') -> 'Any':
-    column_type = getattr(field, 'type', None)
+def _eq_filter(field: Column, value: Any) -> Any:
+    column_type = getattr(field, "type", None)
     if isinstance(column_type, postgresql.ARRAY):
         value = cast(value, column_type)
 
     return field == value
 
 
-DELIMITER = '_'
-RANGE_BEGIN = 'begin'
-RANGE_END = 'end'
+DELIMITER = "_"
+RANGE_BEGIN = "begin"
+RANGE_END = "end"
 
 
 _range_filter_cache = {}
 
 
 def _range_filter_type(
-    type_: 'GRAPHENE_OBJECT_OR_CLASS', _: bool, doc: str
+    type_: GrapgeneObjectOrClass, _: bool, doc: str
 ) -> graphene.InputObjectType:
     of_type = _get_class(type_)
 
@@ -94,7 +78,7 @@ def _range_filter_type(
 
     element_type = graphene.NonNull(of_type)
     klass = type(
-        str(of_type) + 'Range',
+        f"{of_type}Range",
         (graphene.InputObjectType,),
         {RANGE_BEGIN: element_type, RANGE_END: element_type},
     )
@@ -104,7 +88,7 @@ def _range_filter_type(
 
 
 def _in_filter_type(
-    type_: 'GRAPHENE_OBJECT_OR_CLASS', nullable: bool, doc: str
+    type_: GrapgeneObjectOrClass, nullable: bool, doc: str
 ) -> graphene.List:
     of_type = type_
 
@@ -114,44 +98,43 @@ def _in_filter_type(
     if not nullable:
         of_type = graphene.NonNull(of_type)
 
-    filter_field = graphene.List(of_type, description=doc)
-    return filter_field
+    return graphene.List(of_type, description=doc)
 
 
 class FilterSetOptions(InputObjectTypeOptions):
-    model = None
-    fields = None  # type: Dict[str, List[str]]
+    model: Any = None
+    fields: dict[str, list[str]] | None = None
 
 
 class FilterSet(graphene.InputObjectType):
     """Filter set for connection field."""
 
-    _custom_filters = set()
-    _filter_aliases = '_filter_aliases'
-    model = None
+    _custom_filters: ClassVar[set] = set()
+    _filter_aliases: ClassVar[str] = "_filter_aliases"
+    model: ClassVar[Any] = None
 
-    EQ = 'eq'
-    NE = 'ne'
-    LIKE = 'like'
-    ILIKE = 'ilike'
-    IS_NULL = 'is_null'
-    IN = 'in'
-    NOT_IN = 'not_in'
-    LT = 'lt'
-    LTE = 'lte'
-    GT = 'gt'
-    GTE = 'gte'
-    RANGE = 'range'
-    CONTAINS = 'contains'
-    CONTAINED_BY = 'contained_by'
-    OVERLAP = 'overlap'
+    EQ = "eq"
+    NE = "ne"
+    LIKE = "like"
+    ILIKE = "ilike"
+    IS_NULL = "is_null"
+    IN = "in"
+    NOT_IN = "not_in"
+    LT = "lt"
+    LTE = "lte"
+    GT = "gt"
+    GTE = "gte"
+    RANGE = "range"
+    CONTAINS = "contains"
+    CONTAINED_BY = "contained_by"
+    OVERLAP = "overlap"
 
-    AND = 'and'
-    OR = 'or'
-    NOT = 'not'
+    AND = "and"
+    OR = "or"
+    NOT = "not"
 
-    GRAPHQL_EXPRESSION_NAMES = {
-        EQ: '',
+    GRAPHQL_EXPRESSION_NAMES: ClassVar[dict[str, str]] = {
+        EQ: "",
         NE: NE,
         LIKE: LIKE,
         ILIKE: ILIKE,
@@ -171,7 +154,7 @@ class FilterSet(graphene.InputObjectType):
         NOT: NOT,
     }
 
-    ALLOWED_FILTERS = {
+    ALLOWED_FILTERS: ClassVar[dict[Any, list[str]]] = {
         types.Boolean: [EQ, NE],
         types.Date: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Time: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
@@ -200,9 +183,9 @@ class FilterSet(graphene.InputObjectType):
         ],
     }
 
-    ALL = [...]
+    ALL: ClassVar[list[Any]] = [...]
 
-    FILTER_FUNCTIONS = {
+    FILTER_FUNCTIONS: ClassVar[dict[str, Callable]] = {
         EQ: lambda field, v: _eq_filter(field, v),
         NE: lambda field, v: not_(_eq_filter(field, v)),
         LIKE: lambda field, v: field.like(v),
@@ -220,7 +203,7 @@ class FilterSet(graphene.InputObjectType):
         OVERLAP: lambda field, v: field.overlap(cast(v, field.type)),
     }
 
-    FILTER_OBJECT_TYPES = {
+    FILTER_OBJECT_TYPES: ClassVar[dict[str, Callable]] = {
         AND: lambda type_, _, doc: graphene.List(graphene.NonNull(type_)),
         OR: lambda type_, _, doc: graphene.List(graphene.NonNull(type_)),
         NOT: lambda type_, _, doc: type_,
@@ -230,33 +213,33 @@ class FilterSet(graphene.InputObjectType):
         NOT_IN: _in_filter_type,
     }
 
-    DESCRIPTIONS = {
-        EQ: 'Exact match.',
-        NE: 'Not match.',
-        LIKE: 'Case-sensitive containment test.',
-        ILIKE: 'Case-insensitive containment test.',
-        IS_NULL: 'Takes either `true` or `false`.',
-        IN: 'In a given list.',
-        NOT_IN: 'Not in a given list.',
-        LT: 'Less than.',
-        LTE: 'Less than or equal to.',
-        GT: 'Greater than.',
-        GTE: 'Greater than or equal to.',
-        RANGE: 'Selects values within a given range.',
+    DESCRIPTIONS: ClassVar[dict[str, str]] = {
+        EQ: "Exact match.",
+        NE: "Not match.",
+        LIKE: "Case-sensitive containment test.",
+        ILIKE: "Case-insensitive containment test.",
+        IS_NULL: "Takes either `true` or `false`.",
+        IN: "In a given list.",
+        NOT_IN: "Not in a given list.",
+        LT: "Less than.",
+        LTE: "Less than or equal to.",
+        GT: "Greater than.",
+        GTE: "Greater than or equal to.",
+        RANGE: "Selects values within a given range.",
         CONTAINS: (
-            'Elements are a superset of the elements '
-            'of the argument array expression.'
+            "Elements are a superset of the elements "
+            "of the argument array expression."
         ),
         CONTAINED_BY: (
-            'Elements are a proper subset of the elements '
-            'of the argument array expression.'
+            "Elements are a proper subset of the elements "
+            "of the argument array expression."
         ),
         OVERLAP: (
-            'Array has elements in common with an argument array expression.'
+            "Array has elements in common with an argument array expression."
         ),
-        AND: 'Conjunction of filters joined by ``AND``.',
-        OR: 'Conjunction of filters joined by ``OR``.',
-        NOT: 'Negation of filters.',
+        AND: "Conjunction of filters joined by ``AND``.",
+        OR: "Conjunction of filters joined by ``OR``.",
+        NOT: "Negation of filters.",
     }
 
     class Meta:
@@ -264,10 +247,14 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def __init_subclass_with_meta__(
-        cls, model=None, fields=None, _meta=None, **options
-    ):
+        cls,
+        model: Any = None,
+        fields: dict[str, Iterable[str] | Any] | None = None,
+        _meta: FilterSetOptions | None = None,
+        **options: Any,
+    ) -> None:
         if model is None and fields:
-            raise AttributeError('Model not specified')
+            raise AttributeError("Model not specified")
 
         if not _meta:
             _meta = FilterSetOptions(cls)
@@ -280,11 +267,11 @@ class FilterSet(graphene.InputObjectType):
         for klass in reversed(cls.__mro__):
             with contextlib.suppress(AttributeError):
                 for key, expr in klass.EXTRA_EXPRESSIONS.items():
-                    extra_expressions[key] = expr
+                    extra_expressions[key] = expr  # noqa: PERF403
 
             with contextlib.suppress(AttributeError):
                 for key, exprs in klass.EXTRA_ALLOWED_FILTERS.items():
-                    extra_allowed_filters[key] = exprs
+                    extra_allowed_filters[key] = exprs  # noqa: PERF403
 
         if extra_expressions or extra_allowed_filters:
             cls._register_extra(extra_expressions, extra_allowed_filters)
@@ -320,9 +307,8 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def _register_extra(
         cls, extra_expressions: dict, extra_allowed_filters: dict
-    ):
-        """
-        Register new expressions and allowed filters.
+    ) -> None:
+        """Register new expressions and allowed filters.
 
         Args:
             extra_expressions: New expressions.
@@ -337,11 +323,11 @@ class FilterSet(graphene.InputObjectType):
         cls.DESCRIPTIONS = deepcopy(cls.DESCRIPTIONS)
 
         for key, data in extra_expressions.items():
-            graphql_name = data['graphql_name']
-            for_types = data.get('for_types', [])
-            filter_ = data['filter']
-            object_type = data.get('input_type')
-            description = data.get('description')
+            graphql_name = data["graphql_name"]
+            for_types = data.get("for_types", [])
+            filter_ = data["filter"]
+            object_type = data.get("input_type")
+            description = data.get("description")
 
             cls.GRAPHQL_EXPRESSION_NAMES.update({key: graphql_name})
 
@@ -364,15 +350,14 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def aliased(
         cls,
-        query,
-        element,
-        alias=None,
-        name=None,
-        flat=False,
-        adapt_on_names=False,
-    ):
-        """
-        Get an alias of the given element.
+        query: Query | ResolveInfo,
+        element: T,
+        alias: Any = None,
+        name: Any = None,
+        flat: Any = False,
+        adapt_on_names: Any = False,
+    ) -> T:
+        """Get an alias of the given element.
 
         Notes:
             Other arguments are the same as sqlalchemy.orm.aliased.
@@ -391,7 +376,7 @@ class FilterSet(graphene.InputObjectType):
                 element, alias, name, flat, adapt_on_names
             )
             warnings.warn(
-                'Graphene resolve info is deprecated, use SQLAlchemy query. '
+                "Graphene resolve info is deprecated, use SQLAlchemy query. "
                 + example,
                 DeprecationWarning,
                 stacklevel=2,
@@ -412,34 +397,39 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def _build_example_for_deprecation_warning(
-        cls, element, alias, name, flat, adapt_on_names
+        cls,
+        element: Any,
+        alias: Any,
+        name: Any,
+        flat: Any,
+        adapt_on_names: Any,
     ) -> str:
-        """
-        Build message for deprecation warning.
+        """Build message for deprecation warning.
 
         Returns:
             Example code.
 
         """
-        example = 'Example: cls.aliased(query, Model)'
+        example = "Example: cls.aliased(query, Model)"
         with contextlib.suppress(Exception):
             args = {
-                'alias': alias,
-                'name': name,
-                'flat': flat,
-                'adapt_on_names': adapt_on_names,
+                "alias": alias,
+                "name": name,
+                "flat": flat,
+                "adapt_on_names": adapt_on_names,
             }
-            args_list = []
+            args_list: list[str] = []
             for k, v in args.items():
                 if not v:
                     continue
 
-                if isinstance(v, str):
-                    v = '"{}"'.format(v)
-                args_list.append(k + '=' + v)
+                value = v
+                if isinstance(value, str):
+                    value = f'"{v}"'
+                args_list.append(f"{k}={value}")
 
-            example = 'Hint: cls.aliased(query, {}, {})'.format(
-                element.__name__, ', '.join(args_list)
+            example = "Hint: cls.aliased(query, {}, {})".format(
+                element.__name__, ", ".join(args_list)
             )
 
         return example
@@ -447,9 +437,8 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def _aliases_from_info(
         cls, info: graphene.ResolveInfo
-    ) -> 'Dict[str, _MapperEntity]':
-        """
-        Get cached aliases from graphene ResolveInfo object.
+    ) -> dict[str, _MapperEntity]:
+        """Get cached aliases from graphene ResolveInfo object.
 
         Notes:
             Deprecated.
@@ -465,19 +454,18 @@ class FilterSet(graphene.InputObjectType):
 
         if isinstance(context, dict):
             filter_aliases = context[cls._filter_aliases]
-        elif '__dict__' in context.__dir__():
+        elif "__dict__" in context.__dir__():
             filter_aliases = getattr(context, cls._filter_aliases)
         else:
             raise RuntimeError(
-                'Not supported with info.context type {}'.format(type(context))
+                f"Not supported with info.context type {type(context)}"
             )
 
         return filter_aliases
 
     @classmethod
-    def _aliases_from_query(cls, query: Query) -> 'Dict[str, _MapperEntity]':
-        """
-        Get aliases from SQLAlchemy query.
+    def _aliases_from_query(cls, query: Query) -> dict[tuple, _MapperEntity]:
+        """Get aliases from SQLAlchemy query.
 
         Args:
             query: SQLAlchemy query.
@@ -486,27 +474,16 @@ class FilterSet(graphene.InputObjectType):
             Dictionary of model aliases.
 
         """
-
-        join_entities = getattr(query, '_join_entities', None)
-        if join_entities:
-            aliases = {
-                (mapper._target, mapper.name): mapper.entity
-                for mapper in join_entities
-            }
-        else:
-            aliases = {
-                (join_entity._target, join_entity.name): join_entity.entity
-                for join_entity in query._compile_state()._join_entities
-            }
-
-        return aliases
+        return {
+            (join_entity._target, join_entity.name): join_entity.entity
+            for join_entity in query._compile_state()._join_entities
+        }
 
     @classmethod
     def _generate_default_filters(
-        cls, model, field_filters: 'Dict[str, Union[Iterable[str], Any]]'
+        cls, model: Any, field_filters: dict[str, Iterable[str] | Any]
     ) -> dict:
-        """
-        Generate GraphQL fields from SQLAlchemy model columns.
+        """Generate GraphQL fields from SQLAlchemy model columns.
 
         Args:
             model: SQLAlchemy model.
@@ -522,13 +499,13 @@ class FilterSet(graphene.InputObjectType):
         model_fields = cls._get_model_fields_data(model, field_filters.keys())
 
         for field_name, field_object in model_fields.items():
-            column_type = field_object['type']
+            column_type = field_object["type"]
 
             expressions = field_filters[field_name]
             if expressions == cls.ALL:
                 if column_type is None:
                     raise ValueError(
-                        'Unsupported field type for automatic filter binding'
+                        "Unsupported field type for automatic filter binding"
                     )
 
                 type_class = column_type.__class__
@@ -541,19 +518,19 @@ class FilterSet(graphene.InputObjectType):
                             break
                     else:
                         raise KeyError(
-                            'Unsupported column type. '
-                            'Hint: use EXTRA_ALLOWED_FILTERS.'
+                            "Unsupported column type. "
+                            "Hint: use EXTRA_ALLOWED_FILTERS."
                         )
 
-                if field_object['nullable']:
+                if field_object["nullable"]:
                     expressions.append(cls.IS_NULL)
 
             field_type = cls._get_gql_type_from_sqla_type(
-                column_type, field_object['column']
+                column_type, field_object["column"]
             )
 
             fields = cls._generate_filter_fields(
-                expressions, field_name, field_type, field_object['nullable']
+                expressions, field_name, field_type, field_object["nullable"]
             )
             for name, field in fields.items():
                 graphql_filters[name] = get_field_as(
@@ -564,10 +541,9 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def _get_gql_type_from_sqla_type(
-        cls, column_type, sqla_column
-    ) -> 'Union[Type[graphene.ObjectType], Type[GenericScalar]]':
-        """
-        Get GraphQL type from SQLAlchemy column.
+        cls, column_type: Any, sqla_column: Any
+    ) -> type[graphene.ObjectType | GenericScalar]:
+        """Get GraphQL type from SQLAlchemy column.
 
         Args:
             column_type: SQLAlchemy column type.
@@ -579,16 +555,16 @@ class FilterSet(graphene.InputObjectType):
         """
         if column_type is None:
             return GenericScalar
-        else:
-            _type = convert_sqlalchemy_type(column_type, sqla_column)
-            if inspect.isfunction(_type):
-                return _type()  # only graphene-sqlalchemy>2.2.0
-            return _type
+        _type = convert_sqlalchemy_type(column_type, sqla_column)
+        if inspect.isfunction(_type):
+            return _type()  # only graphene-sqlalchemy>2.2.0
+        return _type
 
     @classmethod
-    def _get_model_fields_data(cls, model, only_fields: 'Iterable[str]'):
-        """
-        Get model columns.
+    def _get_model_fields_data(
+        cls, model: Any, only_fields: Iterable[str]
+    ) -> dict:
+        """Get model columns.
 
         Args:
             model: SQLAlchemy model.
@@ -598,7 +574,7 @@ class FilterSet(graphene.InputObjectType):
             Fields info.
 
         """
-        model_fields = {}
+        model_fields: dict = {}
 
         inspected = inspection.inspect(model)
         for descr in inspected.all_orm_descriptors:
@@ -609,9 +585,9 @@ class FilterSet(graphene.InputObjectType):
                     continue
 
                 model_fields[name] = {
-                    'column': attr,
-                    'type': None,
-                    'nullable': True,
+                    "column": attr,
+                    "type": None,
+                    "nullable": True,
                 }
 
             elif isinstance(descr, InstrumentedAttribute):
@@ -622,9 +598,9 @@ class FilterSet(graphene.InputObjectType):
 
                 column = attr.columns[0]
                 model_fields[name] = {
-                    'column': column,
-                    'type': column.type,
-                    'nullable': column.nullable,
+                    "column": column,
+                    "type": column.type,
+                    "nullable": column.nullable,
                 }
 
         return model_fields
@@ -632,13 +608,12 @@ class FilterSet(graphene.InputObjectType):
     @classmethod
     def _generate_filter_fields(
         cls,
-        expressions: 'List[str]',
+        expressions: list[str],
         field_name: str,
-        field_type: 'Type[graphene.ObjectType]',
+        field_type: type[graphene.ObjectType],
         nullable: bool,
-    ) -> 'Dict[str, graphene.ObjectType]':
-        """
-        Generate all available filters for model column.
+    ) -> dict[str, graphene.ObjectType]:
+        """Generate all available filters for model column.
 
         Args:
             expressions: Allowed expressions. Example: ['eq', 'lt', 'gt'].
@@ -676,10 +651,9 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def filter(
-        cls, info: ResolveInfo, query: Query, filters: 'FilterType'
+        cls, info: ResolveInfo, query: Query, filters: FilterType
     ) -> Query:
-        """
-        Return a new query instance with the args ANDed to the existing set.
+        """Return a new query instance with the args ANDed to the existing set.
 
         Args:
             info: GraphQL execution info.
@@ -694,16 +668,16 @@ class FilterSet(graphene.InputObjectType):
 
         if isinstance(context, dict):
             context[cls._filter_aliases] = {}
-        elif '__dict__' in context.__dir__():
+        elif "__dict__" in context.__dir__():
             setattr(context, cls._filter_aliases, {})
         else:
             msg = (
-                'Graphene-SQLAlchemy-Filter: '
-                'info.context has an unsupported type {}. '
-                'Now cls.aliased(info, ...) is not supported. '
-                'Allowed types: dict and object with __dict__ attribute.'
-            ).format(type(context))
-            warnings.warn(msg, RuntimeWarning)
+                "Graphene-SQLAlchemy-Filter: "
+                f"info.context has an unsupported type {type(context)}. "
+                "Now cls.aliased(info, ...) is not supported. "
+                "Allowed types: dict and object with __dict__ attribute."
+            )
+            warnings.warn(msg, RuntimeWarning, stacklevel=2)
 
         query, sqla_filters = cls._translate_many_filter(info, query, filters)
         if sqla_filters is not None:
@@ -713,9 +687,8 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     @lru_cache(maxsize=500)
-    def _split_graphql_field(cls, graphql_field: str) -> 'Tuple[str, str]':
-        """
-        Get model field name and expression.
+    def _split_graphql_field(cls, graphql_field: str) -> tuple[str, str]:
+        """Get model field name and expression.
 
         Args:
             graphql_field: Field name.
@@ -731,7 +704,7 @@ class FilterSet(graphene.InputObjectType):
         )
 
         for expression, name in expression_to_name:
-            if name == '':
+            if name == "":
                 empty_expr = expression
                 continue
 
@@ -742,14 +715,13 @@ class FilterSet(graphene.InputObjectType):
         if empty_expr is not None:
             return graphql_field, empty_expr
 
-        raise KeyError('Operator not found "{}"'.format(graphql_field))
+        raise KeyError(f'Operator not found "{graphql_field}"')
 
     @classmethod
     def _translate_filter(
-        cls, info: ResolveInfo, query: Query, key: str, value: 'Any'
-    ) -> 'Tuple[Query, Any]':
-        """
-        Translate GraphQL to SQLAlchemy filters.
+        cls, info: ResolveInfo, query: Query, key: str, value: Any
+    ) -> tuple[Query, Any]:
+        """Translate GraphQL to SQLAlchemy filters.
 
         Args:
             info: GraphQL resolve info.
@@ -762,9 +734,9 @@ class FilterSet(graphene.InputObjectType):
 
         """
         if key in cls._custom_filters:
-            filter_name = key + '_filter'
+            filter_name = key + "_filter"
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', SAWarning)
+                warnings.simplefilter("ignore", SAWarning)
                 clause = getattr(cls, filter_name)(info, query, value)
                 if isinstance(clause, tuple):
                     query, clause = clause
@@ -787,10 +759,10 @@ class FilterSet(graphene.InputObjectType):
 
         try:
             model_field = getattr(cls.model, field)
-        except AttributeError:
-            raise KeyError('Field not found: ' + field)
+        except AttributeError as e:
+            raise KeyError("Field not found: " + field) from e
 
-        model_field_type = getattr(model_field, 'type', None)
+        model_field_type = getattr(model_field, "type", None)
         is_enum = isinstance(model_field_type, sqltypes.Enum)
         if is_enum and model_field_type.enum_class:
             if isinstance(value, list):
@@ -806,11 +778,10 @@ class FilterSet(graphene.InputObjectType):
         cls,
         info: ResolveInfo,
         query: Query,
-        filters: 'Union[List[FilterType], FilterType]',
-        join_by: 'Callable' = None,
-    ) -> 'Tuple[Query, Any]':
-        """
-        Translate several filters.
+        filters: list[FilterType] | FilterType,
+        join_by: Callable | None = None,
+    ) -> tuple[Query, Any]:
+        """Translate several filters.
 
         Args:
             info: GraphQL resolve info.

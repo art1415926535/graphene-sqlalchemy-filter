@@ -160,11 +160,9 @@ class UserFilter(FilterSet):
 
 ### Model aliases
 
-The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) from the query. It has one differing parameter - `query` (SQLAlchemy Query object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased).
+The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) from the query. It has one differing parameter - `query` (SQLAlchemy Query object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/14/orm/query.html#sqlalchemy.orm.aliased).
 
 Identical joins will be skipped by sqlalchemy.
-
-> Changed in version 1.7: The first parameter is now a query.
 
 
 # Features

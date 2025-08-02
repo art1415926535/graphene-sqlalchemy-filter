@@ -8,6 +8,7 @@ from sqlalchemy.orm import (
     scoped_session,
     sessionmaker,
 )
+from sqlalchemy.pool import StaticPool
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 
 import graphene
@@ -22,7 +23,12 @@ BulkLazyLoader.register_loader()
 
 
 # Database and models
-engine = create_engine("sqlite:///database.sqlite3", echo=True)  # in-memory
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=True,
+)
 db_session = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
 Base.query = db_session.query_property()
@@ -64,15 +70,14 @@ def init_db():
         Clients(name="Courtney"),
         Clients(name="Delmer"),
     ]
-    with db_session() as session:
-        session.bulk_save_objects(clients, return_defaults=True)
-        records = [
-            Records(client_id=client.id)
-            for client in clients
-            for _ in range(3)
-        ]
-        session.bulk_save_objects(records)
-        session.commit()
+    session = db_session()
+    session.bulk_save_objects(clients, return_defaults=True)
+    records = [
+        Records(client_id=client.id) for client in clients for _ in range(3)
+    ]
+    session.bulk_save_objects(records)
+    session.commit()
+    session.close()
 
 
 # GraphQL schema

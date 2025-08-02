@@ -15,6 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship, scoped_session, sessionmaker
+from sqlalchemy.pool import StaticPool
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 
 import graphene
@@ -29,7 +30,12 @@ BulkLazyLoader.register_loader()
 
 
 # Database and models
-engine = create_engine("sqlite:///database.sqlite3", echo=True)  # in-memory
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=True,
+)
 db_session = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
 Base.query = db_session.query_property()
@@ -111,21 +117,21 @@ def init_db():
         Group(name="SQLAlchemy"),
         Group(name="PostgreSQL"),
     ]
-    with db_session() as session:
-        session.bulk_save_objects(users, return_defaults=True)
-        session.bulk_save_objects(groups, return_defaults=True)
-        memberships = [
-            Membership(
-                user_id=user.id,
-                group_id=group.id,
-                is_moderator=user.id == group.id,
-                creator_username=choice(users).username,  # noqa: S311
-            )
-            for user in users
-            for group in groups
-        ]
-        session.bulk_save_objects(memberships)
-        session.commit()
+    session = db_session()
+    session.bulk_save_objects(users, return_defaults=True)
+    session.bulk_save_objects(groups, return_defaults=True)
+    memberships = [
+        Membership(
+            user_id=user.id,
+            group_id=group.id,
+            is_moderator=user.id == group.id,
+            creator_username=choice(users).username,  # noqa: S311
+        )
+        for user in users
+        for group in groups
+    ]
+    session.bulk_save_objects(memberships)
+    session.close()
 
 
 # GraphQL schema

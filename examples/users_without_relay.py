@@ -2,6 +2,7 @@ from flask import Flask
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.pool import StaticPool
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
 
 import graphene
@@ -14,7 +15,12 @@ BulkLazyLoader.register_loader()
 
 
 # Database and models
-engine = create_engine("sqlite:///database.sqlite3", echo=True)  # in-memory
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=True,
+)
 db_session = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
 Base.query = db_session.query_property()
@@ -39,9 +45,10 @@ def init_db():
         User(username="Courtney", balance=100),
         User(username="Delmer", balance=9000),
     ]
-    with db_session() as session:
-        session.bulk_save_objects(users)
-        session.commit()
+    session = db_session()
+    session.bulk_save_objects(users)
+    session.commit()
+    session.close()
 
 
 # GraphQL schema

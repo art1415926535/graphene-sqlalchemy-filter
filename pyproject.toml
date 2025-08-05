@@ -1,0 +1,199 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphene-sqlalchemy-filter"
+version = "1.13.0"
+description = "Filters for Graphene SQLAlchemy integration"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+dependencies = ["graphene-sqlalchemy>=2.1.0,<3", "SQLAlchemy<2"]
+authors = [{ name = "Artem Fedotov" }]
+license = "MIT"
+keywords = ["api", "graphql", "protocol", "rest", "relay", "graphene"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Repository = "https://github.com/art1415926535/graphene-sqlalchemy-filter"
+Releasenotes = "https://github.com/art1415926535/graphene-sqlalchemy-filter/releases"
+Documentation = "https://github.com/art1415926535/graphene-sqlalchemy-filter/blob/master/README.md"
+
+[project.optional-dependencies]
+dev = [
+  "SQLAlchemy==1.4.45",
+  "graphene-sqlalchemy==2.3.0",
+  "SQLAlchemy-bulk-lazy-loader==0.10.0",
+  "Flask==3.1.1",
+  "Flask-GraphQL==1.4.1",
+  "tox==4.28.4",
+  "pytest==8.4.1",
+  "pytest-cov==6.2.1",
+  "coverage==7.10.1",
+  "ruff==0.12.7",
+]
+
+ci = ["tox==4.28.4", "coverage==7.10.1"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["graphene_sqlalchemy_filter*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+"*" = ["README.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py39"
+src = ["graphene_sqlalchemy_filter", "tests", "examples"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+
+select = ["ALL"]
+ignore = [
+  "ANN401",
+  "ARG005",
+  "BLE001",
+  "COM812",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+  "D417",
+  "EM101",
+  "EM102",
+  "FA100",
+  "FBT",
+  "PLR0913",
+  "SLF001",
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["ANN", "ARG", "RUF012", "S101", "S201"]
+"tests/*" = ["ANN", "ARG", "RUF012", "S101"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+split-on-trailing-comma = false
+
+sections.graphql = [
+  "graphql",
+  "promise",
+  "graphene",
+  "graphene_sqlalchemy",
+  "flask_graphql",
+]
+known-first-party = ["graphene_sqlalchemy_filter"]
+sections.tests = ["tests"]
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "graphql",
+  "first-party",
+  "tests",
+  "local-folder",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:The 'context' alias has been deprecated. Please use 'context_value' instead.:DeprecationWarning",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py{39,310,311,312,313}-gs{2.1.0,2.2.0,2.3.0}, lint, coverage
+isolated_build = True
+
+
+[testenv]
+deps =
+  pytest==8.4.1
+  pytest-cov==6.2.1
+  coverage==7.10.1
+  SQLAlchemy==1.4.45
+
+  gs2.1.0: graphene-sqlalchemy==2.1.0
+  gs2.1.0: promise==2.3
+  gs2.1.0: graphene==2.1.9
+
+  gs2.2.0: graphene-sqlalchemy==2.2.0
+
+  gs2.3.0: graphene-sqlalchemy==2.3.0
+
+setenv =
+  COVERAGE_FILE=.coverage.{envname}
+
+commands =
+  pytest --cov=graphene_sqlalchemy_filter --cov-report=term-missing tests
+
+
+[testenv:lint]
+deps =
+  ruff
+commands =
+  ruff check graphene_sqlalchemy_filter tests examples
+
+
+[testenv:coverage]
+depends =
+  py39-gs2.1.0,
+  py310-gs2.1.0,
+  py311-gs2.1.0,
+  py312-gs2.1.0,
+  py313-gs2.1.0,
+  py39-gs2.2.0,
+  py310-gs2.2.0,
+  py311-gs2.2.0,
+  py312-gs2.2.0,
+  py313-gs2.2.0,
+  py39-gs2.3.0,
+  py310-gs2.3.0,
+  py311-gs2.3.0,
+  py312-gs2.3.0,
+  py313-gs2.3.0,
+
+deps =
+  coverage[toml]==7.10.1
+
+setenv =
+  COVERAGE_FILE=.coverage
+
+commands =
+  coverage erase
+  coverage combine
+  coverage html
+"""

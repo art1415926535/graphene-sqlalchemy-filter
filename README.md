@@ -1,6 +1,6 @@
 # Graphene-SQLAlchemy-Filter
 
-[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI) [![Coverage Status](https://coveralls.io/repos/github/art1415926535/graphene-sqlalchemy-filter/badge.svg?branch=master)](https://coveralls.io/github/art1415926535/graphene-sqlalchemy-filter?branch=master) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
+[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI) [![Coverage Status](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter/graph/badge.svg?token=uEk5snJdaT)](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
 
 Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/graphene-sqlalchemy)
 
@@ -160,11 +160,9 @@ class UserFilter(FilterSet):
 
 ### Model aliases
 
-The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) from the query. It has one differing parameter - `query` (SQLAlchemy Query object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased).
+The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](https://docs.sqlalchemy.org/en/13/orm/query.html#sqlalchemy.orm.aliased) from the query. It has one differing parameter - `query` (SQLAlchemy Query object). Other arguments are the same as [sqlalchemy.orm.aliased](https://docs.sqlalchemy.org/en/14/orm/query.html#sqlalchemy.orm.aliased).
 
 Identical joins will be skipped by sqlalchemy.
-
-> Changed in version 1.7: The first parameter is now a query.
 
 
 # Features

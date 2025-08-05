@@ -7,18 +7,18 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Union, cast
 
 from sqlalchemy import inspection, tuple_
-from sqlalchemy.orm import Query, aliased, contains_eager, defaultload
+from sqlalchemy.orm import (
+    DeclarativeMeta,
+    Query,
+    aliased,
+    contains_eager,
+    defaultload,
+)
 
 import graphene_sqlalchemy
 from graphene.utils.str_converters import to_snake_case
 from promise import Promise, dataloader
 
-
-try:
-    from sqlalchemy.orm import DeclarativeMeta
-except ImportError:
-    # Fallback for older SQLAlchemy versions
-    from sqlalchemy.ext.declarative import DeclarativeMeta
 
 if TYPE_CHECKING:
     from collections.abc import Callable

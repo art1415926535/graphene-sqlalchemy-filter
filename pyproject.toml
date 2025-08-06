@@ -8,7 +8,7 @@ version = "1.13.0"
 description = "Filters for Graphene SQLAlchemy integration"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
-dependencies = ["graphene-sqlalchemy>=2.1.0,<3", "SQLAlchemy<2"]
+dependencies = ["graphene-sqlalchemy>=2.1.0", "SQLAlchemy<2"]
 authors = [{ name = "Artem Fedotov" }]
 license = "MIT"
 keywords = ["api", "graphql", "protocol", "rest", "relay", "graphene"]
@@ -33,10 +33,10 @@ Documentation = "https://github.com/art1415926535/graphene-sqlalchemy-filter/blo
 [project.optional-dependencies]
 dev = [
   "SQLAlchemy==1.4.45",
-  "graphene-sqlalchemy==2.3.0",
+  "graphene-sqlalchemy==3.0.0rc2",
   "SQLAlchemy-bulk-lazy-loader==0.10.0",
-  "Flask==3.1.1",
-  "Flask-GraphQL==1.4.1",
+  "starlette-graphene3==0.6.0",
+  "uvicorn[standard]==0.35.0",
   "tox==4.28.4",
   "pytest==8.4.1",
   "pytest-cov==6.2.1",
@@ -92,7 +92,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"examples/*" = ["ANN", "ARG", "RUF012", "S101", "S201"]
+"examples/*" = ["ANN", "ARG", "RUF012", "S101", "S104", "S201"]
 "tests/*" = ["ANN", "ARG", "RUF012", "S101"]
 
 [tool.ruff.lint.isort]
@@ -104,7 +104,7 @@ sections.graphql = [
   "promise",
   "graphene",
   "graphene_sqlalchemy",
-  "flask_graphql",
+  "starlette_graphene3",
 ]
 known-first-party = ["graphene_sqlalchemy_filter"]
 sections.tests = ["tests"]
@@ -135,7 +135,7 @@ show_missing = true
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py{39,310,311,312,313}-gs{2.1.0,2.2.0,2.3.0}, lint, coverage
+envlist = py{39,310,311,312,313}-gs{2.1,2.2,2.3,3.0}, lint, coverage
 isolated_build = True
 
 
@@ -146,13 +146,15 @@ deps =
   coverage==7.10.1
   SQLAlchemy==1.4.45
 
-  gs2.1.0: graphene-sqlalchemy==2.1.0
-  gs2.1.0: promise==2.3
-  gs2.1.0: graphene==2.1.9
+  gs2.1: graphene-sqlalchemy==2.1.0
+  gs2.1: promise==2.3
+  gs2.1: graphene==2.1.9
 
-  gs2.2.0: graphene-sqlalchemy==2.2.0
+  gs2.2: graphene-sqlalchemy==2.2.0
 
-  gs2.3.0: graphene-sqlalchemy==2.3.0
+  gs2.3: graphene-sqlalchemy==2.3.0
+
+  gs3.0: graphene-sqlalchemy==3.0.0rc2
 
 setenv =
   COVERAGE_FILE=.coverage.{envname}

@@ -22,6 +22,8 @@ from graphene.types.inputobjecttype import InputObjectTypeOptions
 from graphene.types.utils import get_field_as
 from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 
+from .versions import graphql_version_lt_3_0_0
+
 
 try:
     from sqlalchemy_utils import TSVectorType
@@ -525,6 +527,9 @@ class FilterSet(graphene.InputObjectType):
                 if field_object["nullable"]:
                     expressions.append(cls.IS_NULL)
 
+            if not graphql_version_lt_3_0_0:
+                column_type = type(column_type)
+
             field_type = cls._get_gql_type_from_sqla_type(
                 column_type, field_object["column"]
             )
@@ -555,7 +560,7 @@ class FilterSet(graphene.InputObjectType):
         """
         if column_type is None:
             return GenericScalar
-        _type = convert_sqlalchemy_type(column_type, sqla_column)
+        _type = convert_sqlalchemy_type(column_type, column=sqla_column)
         if inspect.isfunction(_type):
             return _type()  # only graphene-sqlalchemy>2.2.0
         return _type
@@ -765,13 +770,36 @@ class FilterSet(graphene.InputObjectType):
         model_field_type = getattr(model_field, "type", None)
         is_enum = isinstance(model_field_type, sqltypes.Enum)
         if is_enum and model_field_type.enum_class:
-            if isinstance(value, list):
-                value = [model_field_type.enum_class(v) for v in value]
-            else:
-                value = model_field_type.enum_class(value)
+            value = cls._convert_to_enum(value, model_field_type)
 
         clause = filter_function(model_field, value)
         return query, clause
+
+    @classmethod
+    def _convert_to_enum(cls, value: Any, model_field_type: Any) -> Any:
+        """Convert value to enum type."""
+        if value is None:
+            return None
+
+        if isinstance(value, list):
+            value = [
+                model_field_type.enum_class(cls._get_enum_value(v))
+                if v is not None
+                else None
+                for v in value
+            ]
+        else:
+            value = model_field_type.enum_class(cls._get_enum_value(value))
+
+        return value
+
+    @classmethod
+    def _get_enum_value(cls, value: Any) -> Any:
+        """Get enum value from GraphQL value."""
+        if graphql_version_lt_3_0_0:
+            return value
+
+        return value.value
 
     @classmethod
     def _translate_many_filter(

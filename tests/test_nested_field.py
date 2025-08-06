@@ -8,22 +8,20 @@ from graphene_sqlalchemy_filter.connection_field import (
     FilterableConnectionField,
     ModelLoader,
     NestedFilterableConnectionField,
-    graphene_sqlalchemy_version_lt_2_1_2,
 )
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 from .models import Article, Author, Group, User
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason="not used")
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not used")
 @pytest.mark.skipif(
     # https://stackoverflow.com/questions/45335276/sqlite-select-query-including-a-values-in-the-where-clause-returns-correctly-w
     sqlite3.sqlite_version_info < (3, 15, 2),
     reason="requires sqlite 3.15.2 or higher",
 )
-def test_composite_pk(info, session):
-    info.path = ["author"]
-    info.field_name = "articles"
-    info.context = {"session": session}
+def test_composite_pk(info_builder, session):
+    info = info_builder(path=["author"], field_name="articles")
 
     author = Author(first_name="Ally", last_name="A")
     session.add(author)
@@ -50,7 +48,7 @@ def test_composite_pk(info, session):
     assert a2.text == "abc"
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason="not used")
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not used")
 def test_custom_filter_arg():
     custom_filter_arg = "where"
 
@@ -64,10 +62,11 @@ def test_custom_filter_arg():
     assert model_loader_class.filter_arg == custom_filter_arg
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason="not used")
-def test_model_dataloader_creation(info):
-    info.path = ["user", "edges", 0, "node", "groups"]
-    info.field_name = "groups"
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not used")
+def test_model_dataloader_creation(info_builder):
+    info = info_builder(
+        path=["user", "edges", 0, "node", "groups"], field_name="groups"
+    )
     get_data_loader = (
         NestedFilterableConnectionField._get_or_create_data_loader
     )
@@ -82,21 +81,25 @@ def test_model_dataloader_creation(info):
     )
     assert model_loader_1 is model_loader_2
 
-    info.path = ["user", "edges", 0, "node", "anotherGroups"]
+    info = info_builder(
+        path=["user", "edges", 0, "node", "anotherGroups"], field_name="groups"
+    )
     model_loader_3 = get_data_loader(
         User(), Group, info, {"filters": {"name": "group_name"}}
     )
     assert model_loader_1 is not model_loader_3
 
 
-@pytest.mark.skipif(graphene_sqlalchemy_version_lt_2_1_2, reason="not used")
-def test_flask_context(info):
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not used")
+def test_flask_context(info_builder):
     class Request:
         pass
 
-    info.path = ["user", "edges", 0, "node", "groups"]
-    info.field_name = "groups"
-    info.context = Request()
+    info = info_builder(
+        path=["user", "edges", 0, "node", "groups"],
+        field_name="groups",
+        context=Request(),
+    )
     get_data_loader = (
         NestedFilterableConnectionField._get_or_create_data_loader
     )
@@ -111,7 +114,11 @@ def test_flask_context(info):
     )
     assert model_loader_1 is model_loader_2
 
-    info.path = ["user", "edges", 0, "node", "anotherGroups"]
+    info = info_builder(
+        path=["user", "edges", 0, "node", "anotherGroups"],
+        field_name="groups",
+        context=Request(),
+    )
     model_loader_3 = get_data_loader(
         User(), Group, info, {"filters": {"name": "group_name"}}
     )

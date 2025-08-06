@@ -1,12 +1,15 @@
-from flask import Flask
-from sqlalchemy import Column, Integer, String, create_engine
+import enum
+
+import uvicorn
+from sqlalchemy import Column, Enum, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
+from starlette.applications import Starlette
 
 import graphene
-from flask_graphql import GraphQLView
+from starlette_graphene3 import GraphQLApp, make_playground_handler
 
 from graphene_sqlalchemy_filter import FilterSet
 
@@ -26,6 +29,11 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 
+class StatusEnum(enum.Enum):
+    offline = "offline"
+    online = "online"
+
+
 class User(Base):
     __tablename__ = "user"
 
@@ -33,6 +41,7 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     type = Column(String, nullable=True)
+    status = Column(Enum(StatusEnum), default=None, nullable=True)
 
 
 def init_db():
@@ -40,8 +49,8 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
     users = [
-        User(username="Ally", type="human"),
-        User(username="Blayze", balance=0),
+        User(username="Ally", type="human", status=StatusEnum.online),
+        User(username="Blayze", balance=0, status=StatusEnum.offline),
         User(username="Courtney", balance=100),
         User(username="Delmer", balance=9000),
     ]
@@ -69,6 +78,7 @@ class UserFilter(FilterSet):
             "username": ["eq", "ne", "in", "ilike"],
             "balance": [...],
             "type": [...],
+            "status": [...],
         }
 
 
@@ -90,20 +100,13 @@ class Query(graphene.ObjectType):
 
 
 # Server
-app = Flask(__name__)
-app.add_url_rule(
-    "/graphql",
-    view_func=GraphQLView.as_view(
-        "graphql", schema=graphene.Schema(query=Query), graphiql=True
-    ),
+app = Starlette()
+app.mount(
+    "/",
+    GraphQLApp(graphene.Schema(query=Query), on_get=make_playground_handler()),
 )
-
-
-@app.teardown_appcontext
-def shutdown_session(exception=None):
-    db_session.remove()
 
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

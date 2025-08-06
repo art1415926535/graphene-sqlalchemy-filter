@@ -4,12 +4,12 @@ import graphene
 from graphene_sqlalchemy import get_query
 
 from graphene_sqlalchemy_filter import FilterSet
-from graphene_sqlalchemy_filter.connection_field import gqls_version
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 from tests import models
 
 
-@pytest.mark.skipif(gqls_version < (2, 2, 0), reason="not supported")
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not supported")
 def test_enum_filter_without_relay(session):
     """https://github.com/art1415926535/graphene-sqlalchemy-filter/issues/28"""  # noqa: D415
     online = models.StatusEnum.online
@@ -50,6 +50,5 @@ def test_enum_filter_without_relay(session):
     )
 
     assert not execution_result.errors
-    assert not execution_result.invalid
 
     assert execution_result.data == {"allUsers": [{"username": "user_1"}]}

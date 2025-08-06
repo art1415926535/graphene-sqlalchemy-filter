@@ -3,7 +3,7 @@ import pytest
 from graphene_sqlalchemy.utils import EnumValue
 
 from graphene_sqlalchemy_filter import FilterSet
-from graphene_sqlalchemy_filter.connection_field import gqls_version
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 from tests import models
 from tests.graphql_objects import Query, UserFilter
@@ -44,10 +44,10 @@ def test_filters(info_and_user_query):
     assert where_clause == ok
 
 
-@pytest.mark.skipif(gqls_version < (2, 2, 0), reason="not supported")
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not supported")
 def test_enum(info_and_user_query):
     info, user_query = info_and_user_query
-    filters = {"status": models.StatusEnum.online.value}
+    filters = {"status": models.StatusEnum.online}
     query = UserFilter.filter(info, user_query, filters)
 
     where_clause = query.whereclause

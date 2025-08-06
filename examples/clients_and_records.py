@@ -1,4 +1,4 @@
-from flask import Flask
+import uvicorn
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
@@ -10,11 +10,12 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.pool import StaticPool
 from sqlalchemy_bulk_lazy_loader import BulkLazyLoader
+from starlette.applications import Starlette
 
 import graphene
-from flask_graphql import GraphQLView
 from graphene import Connection, Node
 from graphene_sqlalchemy import SQLAlchemyObjectType
+from starlette_graphene3 import GraphQLApp, make_playground_handler
 
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
 
@@ -130,20 +131,13 @@ class Query(graphene.ObjectType):
 
 
 # Server
-app = Flask(__name__)
-app.add_url_rule(
-    "/graphql",
-    view_func=GraphQLView.as_view(
-        "graphql", schema=graphene.Schema(query=Query), graphiql=True
-    ),
+app = Starlette()
+app.mount(
+    "/",
+    GraphQLApp(graphene.Schema(query=Query), on_get=make_playground_handler()),
 )
-
-
-@app.teardown_appcontext
-def shutdown_session(exception=None):
-    db_session.remove()
 
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

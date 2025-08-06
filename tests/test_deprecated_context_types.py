@@ -21,9 +21,8 @@ class FilterAliasedResolveInfo(UserFilter):
         return query, True
 
 
-def test_dict_context(info_and_user_query):
-    info, user_query = info_and_user_query
-    info.context = {}
+def test_dict_context(info_builder, user_query):
+    info = info_builder(context={})
     filters = {}
 
     with warnings.catch_warnings():
@@ -31,13 +30,11 @@ def test_dict_context(info_and_user_query):
         UserFilter.filter(info, user_query, filters)
 
 
-def test_object_context(info_and_user_query):
-    info, user_query = info_and_user_query
-
+def test_object_context(info_builder, user_query):
     class Context:
         pass
 
-    info.context = Context()
+    info = info_builder(context=Context())
     filters = {}
 
     with warnings.catch_warnings():
@@ -45,46 +42,39 @@ def test_object_context(info_and_user_query):
         UserFilter.filter(info, user_query, filters)
 
 
-def test_slots_context(info_and_user_query):
-    info, user_query = info_and_user_query
-
+def test_slots_context(info_builder, user_query):
     class Context:
         __slots__ = ()
 
-    info.context = Context()
+    info = info_builder(context=Context())
     filters = {}
 
     with pytest.warns(RuntimeWarning):
         UserFilter.filter(info, user_query, filters)
 
 
-def test_aliased_with_dict_context(info_and_user_query):
-    info, user_query = info_and_user_query
-    info.context = {}
+def test_aliased_with_dict_context(info_builder, user_query):
+    info = info_builder(context={})
     filters = {"is_moderator": True}
     with pytest.warns(DeprecationWarning, match=_warning_msg):
         FilterAliasedResolveInfo.filter(info, user_query, filters)
 
 
-def test_aliased_with_object_context(info_and_user_query):
-    info, user_query = info_and_user_query
-
+def test_aliased_with_object_context(info_builder, user_query):
     class Context:
         pass
 
-    info.context = Context()
+    info = info_builder(context=Context())
     filters = {"is_moderator": True}
     with pytest.warns(DeprecationWarning, match=_warning_msg):
         FilterAliasedResolveInfo.filter(info, user_query, filters)
 
 
-def test_aliased_with_slots_context(info_and_user_query):
-    info, user_query = info_and_user_query
-
+def test_aliased_with_slots_context(info_builder, user_query):
     class Context:
         __slots__ = ()
 
-    info.context = Context()
+    info = info_builder(context=Context())
     filters = {"is_moderator": True}
 
     with (

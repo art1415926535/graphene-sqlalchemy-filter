@@ -1,8 +1,6 @@
 import pytest
 
-from graphene_sqlalchemy_filter.connection_field import (
-    graphene_sqlalchemy_version_lt_2_1_2,
-)
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 from tests.graphql_objects import schema
 from tests.models import Group, Membership, User
@@ -91,7 +89,6 @@ def test_response_without_filters(session):
         )
 
         assert not execution_result.errors
-        assert not execution_result.invalid
 
         assert execution_result.data
 
@@ -124,7 +121,6 @@ def test_response_with_filters(session):
         )
 
         assert not execution_result.errors
-        assert not execution_result.invalid
 
         assert execution_result.data
 
@@ -176,7 +172,7 @@ def test_nested_response_without_filters(session):
             }
         }"""
     # 5 - if graphene_sqlalchemy_filter.ModelLoader used
-    query_count = 8 if graphene_sqlalchemy_version_lt_2_1_2 else 5
+    query_count = 8 if gsqla_version_lt_2_1_2 else 5
 
     with SQLAlchemyQueryCounter(session, query_count):
         execution_result = schema.execute(
@@ -184,7 +180,6 @@ def test_nested_response_without_filters(session):
         )
 
         assert not execution_result.errors
-        assert not execution_result.invalid
 
         assert execution_result.data
 
@@ -222,9 +217,7 @@ def test_nested_response_without_filters(session):
     assert is_moderator_values == [True, False, False]
 
 
-@pytest.mark.skipif(
-    graphene_sqlalchemy_version_lt_2_1_2, reason="not supported"
-)
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not supported")
 def test_nested_response_with_filters(session):
     users = add_users(session)
     add_users_to_new_groups(session, users)
@@ -252,7 +245,6 @@ def test_nested_response_with_filters(session):
         )
 
         assert not execution_result.errors
-        assert not execution_result.invalid
 
         assert execution_result.data
 
@@ -271,9 +263,7 @@ def test_nested_response_with_filters(session):
     assert is_moderator_value is True
 
 
-@pytest.mark.skipif(
-    graphene_sqlalchemy_version_lt_2_1_2, reason="not supported"
-)
+@pytest.mark.skipif(gsqla_version_lt_2_1_2, reason="not supported")
 def test_nested_response_with_recursive_model(session):
     add_groups(session, with_parent_group=True)
     session.commit()
@@ -304,7 +294,6 @@ def test_nested_response_with_recursive_model(session):
         )
 
         assert not execution_result.errors
-        assert not execution_result.invalid
 
         assert execution_result.data
 

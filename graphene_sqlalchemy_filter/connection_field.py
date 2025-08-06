@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import importlib.metadata
-import re
 from contextlib import suppress
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Union, cast
@@ -19,6 +17,8 @@ import graphene_sqlalchemy
 from graphene.utils.str_converters import to_snake_case
 from promise import Promise, dataloader
 
+from .versions import graphql_version_lt_3_0_0, gsqla_version_lt_2_1_2
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,18 +28,8 @@ if TYPE_CHECKING:
 
     from .filters import FilterSet
 
-_gqls_version_match = re.match(
-    r"(\d+)\.(\d+)\.(\d+)", importlib.metadata.version("graphene-sqlalchemy")
-)
-gqls_version = ()
-if _gqls_version_match:
-    gqls_version: tuple[int, ...] = tuple(
-        int(x) for x in _gqls_version_match.groups()
-    )
 
-
-graphene_sqlalchemy_version_lt_2_1_2 = gqls_version < (2, 1, 2)
-if graphene_sqlalchemy_version_lt_2_1_2:
+if gsqla_version_lt_2_1_2:
     default_connection_field_factory = None
 else:
     from graphene_sqlalchemy.fields import default_connection_field_factory
@@ -50,6 +40,13 @@ SqlaModel = Union[DeclarativeMeta, type[DeclarativeMeta]]
 DEFAULT_FILTER_ARG: str = "filters"
 
 
+def _get_field_name(info: ResolveInfo) -> str:
+    """Get field name from ResolveInfo."""
+    if graphql_version_lt_3_0_0:
+        return info.field_asts[0].name.value
+    return info.field_nodes[0].name.value
+
+
 class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
     filter_arg: ClassVar[str] = DEFAULT_FILTER_ARG
 
@@ -57,7 +54,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
     filters: ClassVar[dict] = {}
 
     def __init_subclass__(cls) -> None:
-        if graphene_sqlalchemy_version_lt_2_1_2:
+        if gsqla_version_lt_2_1_2:
             return
 
         if cls.filters and cls.factory is None:
@@ -109,7 +106,7 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+        field_name = _get_field_name(info)
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: FilterSet = filters_type.graphene_type
@@ -231,7 +228,7 @@ class ModelLoader(dataloader.DataLoader):
             FilterSet class from field args.
 
         """
-        field_name = info.field_asts[0].name.value
+        field_name = _get_field_name(info)
         schema_field = info.parent_type.fields.get(field_name)
         filters_type = schema_field.args[cls.filter_arg].type
         filters: FilterSet = filters_type.graphene_type

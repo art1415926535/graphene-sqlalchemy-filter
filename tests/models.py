@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import declarative_base, relationship
 
-from graphene_sqlalchemy_filter.connection_field import gqls_version
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 
 Base = declarative_base()
@@ -54,11 +54,11 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True, index=True)
     balance = Column(Integer, default=None)
     is_active = Column(Boolean, default=True)
-    if gqls_version >= (2, 2, 0):
+    if not gsqla_version_lt_2_1_2:
         status = Column(Enum(StatusEnum), default=StatusEnum.offline)
 
     @hybrid_property
-    def username_hybrid_property(self):
+    def username_hybrid_property(self) -> str:
         return func.lower(self.username)
 
     memberships = relationship(

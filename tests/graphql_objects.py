@@ -5,7 +5,7 @@ from graphene import Connection, Node
 from graphene_sqlalchemy import SQLAlchemyObjectType
 
 from graphene_sqlalchemy_filter import FilterableConnectionField, FilterSet
-from graphene_sqlalchemy_filter.connection_field import gqls_version
+from graphene_sqlalchemy_filter.versions import gsqla_version_lt_2_1_2
 
 from .models import Article, Author, Group, Membership, User
 
@@ -34,7 +34,7 @@ USER_FILTER_FIELDS = {
 }
 
 
-if gqls_version >= (2, 2, 0):
+if not gsqla_version_lt_2_1_2:
     USER_FILTER_FIELDS["status"] = ["eq"]
 
 

@@ -1,6 +1,6 @@
 # Graphene-SQLAlchemy-Filter
 
-[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/workflows/CI/badge.svg)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions?query=workflow%3ACI) [![Coverage Status](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter/graph/badge.svg?token=uEk5snJdaT)](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
+[![CI](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/art1415926535/graphene-sqlalchemy-filter/actions/workflows/ci.yml) [![Coverage Status](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter/graph/badge.svg?token=uEk5snJdaT)](https://codecov.io/gh/art1415926535/graphene-sqlalchemy-filter) [![PyPI version](https://badge.fury.io/py/graphene-sqlalchemy-filter.svg)](https://badge.fury.io/py/graphene-sqlalchemy-filter)
 
 Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/graphene-sqlalchemy)
 

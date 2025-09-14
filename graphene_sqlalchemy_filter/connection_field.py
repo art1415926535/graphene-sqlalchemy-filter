@@ -261,7 +261,7 @@ class ModelLoader(dataloader.DataLoader):
             .options(
                 contains_eager(self.relation, alias=aliased_model),
                 defaultload(self.parent_model).load_only(
-                    *self.parent_model_pks
+                    *self.parent_model_pk_fields
                 ),
             )
         )

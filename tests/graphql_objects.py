@@ -65,9 +65,9 @@ class UserFilter(BaseFilter):
         )
 
         if value:
-            filter_ = membership.id.isnot(None)
+            filter_ = membership.id_.isnot(None)
         else:
-            filter_ = membership.id.is_(None)
+            filter_ = membership.id_.is_(None)
         return query, filter_
 
     @classmethod

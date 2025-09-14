@@ -6,6 +6,19 @@ Filters for [Graphene SQLAlchemy integration](https://github.com/graphql-python/
 
 ![preview](https://github.com/art1415926535/graphene-sqlalchemy-filter/blob/master/preview.gif?raw=true)
 
+## Choosing the Right Library
+
+> ❗**Important:** This project does **not** support **graphene-sqlalchemy v3**.  
+> Starting from v3, **filtering is already included** in the upstream library.
+
+Use the following table to decide which package fits your needs:
+
+| Graphene-SQLAlchemy version | What to use | Notes |
+|------------|-------------|-------|
+| **v2.x** | ✅ `graphene-sqlalchemy-filter` | Provides flexible filtering integration. |
+| **v3.x** | ❌ Not supported here | [Built-in filtering](https://github.com/graphql-python/graphene-sqlalchemy/pull/357) is already available in `graphene-sqlalchemy` itself. |
+
+
 # Quick start
 
 Create a filter and add it to the graphene field.

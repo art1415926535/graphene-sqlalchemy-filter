@@ -286,7 +286,7 @@ def test_nested_response_with_recursive_model(session):
                             filters: {
                                 or: [{name: "group_1"}, {name: "group_2"}]
                             },
-                            sort: NAME_DESC
+                            sort: ID_DESC
                         ){
                             edges{
                                 node{

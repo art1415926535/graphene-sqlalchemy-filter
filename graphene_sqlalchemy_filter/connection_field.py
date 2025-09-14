@@ -6,7 +6,7 @@ from contextlib import suppress
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Union, cast
 
-from sqlalchemy import inspection, tuple_
+from sqlalchemy import inspect, inspection, tuple_
 from sqlalchemy.orm import (
     DeclarativeMeta,
     Query,
@@ -276,15 +276,10 @@ class ModelLoader(dataloader.DataLoader):
         order = []
         if sort:
             for s in sort:
-                sort_field_name = s.value
-                if not isinstance(sort_field_name, str):
-                    sort_field_name = sort_field_name.element.name
-                sort_field = getattr(by_model, sort_field_name)
-                if s.endswith("_ASC"):
-                    sort_field = sort_field.asc()
-                elif s.endswith("_DESC"):
-                    sort_field = sort_field.desc()
-                order.append(sort_field)
+                ai = inspect(by_model)
+                prop = ai.mapper.get_property_by_column(s.value.element)
+                col = getattr(by_model, prop.key)
+                order.append(s.value.modifier(col))
 
         return query.order_by(*order)
 

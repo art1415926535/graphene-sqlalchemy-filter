@@ -22,7 +22,9 @@ Base = declarative_base()
 class Membership(Base):
     __tablename__ = "member"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    # The column is named `id_` instead of `id` to verify the fix for
+    # https://github.com/art1415926535/graphene-sqlalchemy-filter/issues/66
+    id_ = Column("id", Integer, primary_key=True, autoincrement=True)
     user_id = Column(ForeignKey("user.user_id"))
     group_id = Column(ForeignKey("group.id"))
     is_moderator = Column(Boolean, nullable=False, default=False)

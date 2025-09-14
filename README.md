@@ -36,7 +36,7 @@ class Query(ObjectType):
 
 ```
 
-Now, we're going to create query.
+Now, we're going to create a query.
 ```graphql
 {
   allUsers (
@@ -86,7 +86,7 @@ Metaclass must contain the sqlalchemy model and fields.
 Automatically generated filters must be specified by `fields` variable. 
 Key - field name of sqlalchemy model, value - list of expressions (or shortcut).
 
-Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field (does not work with hybrid property).
+Shortcut (default: `[...]`) will add all the allowed filters for this type of sqlalchemy field (does not work with `hybrid_property`).
 
 | Key            | Description                     | GraphQL postfix |
 |----------------|---------------------------------|-----------------|
@@ -191,10 +191,10 @@ class UserNode(SQLAlchemyObjectType):
 ```
 
 **Important:**
-  1. pagination (first/after, last/before) are performed by python (keep this in mind when working with large amounts of data)
-  1. nested filters work by dataloaders
-  1. this module optimizes one-to-many relationships, to optimize many-to-one relationships use [sqlalchemy_bulk_lazy_loader](https://github.com/operator/sqlalchemy_bulk_lazy_loader)
-  1. nested filters require `graphene_sqlalchemy>=2.1.2`
+  1. Pagination (first/after, last/before) is performed in Python (keep this in mind when working with large amounts of data)
+  1. Nested filters work via dataloaders
+  1. This module optimizes one-to-many relationships, to optimize many-to-one relationships use [sqlalchemy_bulk_lazy_loader](https://github.com/operator/sqlalchemy_bulk_lazy_loader)
+  1. Nested filters require `graphene_sqlalchemy>=2.1.2`
 
 
 ### Example
@@ -346,10 +346,9 @@ class BaseFilter(FilterSet):
     DESCRIPTIONS = {
         'eq': 'Полностью совпадает.',
         'ne': 'Не совпадает.',
-        'like': 'Регистрозависимая проверка строки по шлабону.',
-        'ilike': 'Регистронезависимая проверка строки по шлабону.',
-        'regexp': 'Регистрозависимая проверка строки по регулярному выражению.',
-        'is_null': 'Равно ли значение `null`. Принемает `true` или `false`.',
+        'like': 'Регистрозависимая проверка строки по шаблону.',
+        'ilike': 'Регистронезависимая проверка строки по шаблону.',
+        'is_null': 'Равно ли значение `null`. Принимает `true` или `false`.',
         'in': 'Проверка вхождения в список.',
         'not_in': 'Проверка не вхождения в список.',
         'lt': 'Меньше, чем указанное значение.',

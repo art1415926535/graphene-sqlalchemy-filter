@@ -178,6 +178,56 @@ The function `cls.aliased(query, model, name='...')` returns [sqlalchemy alias](
 Identical joins will be skipped by sqlalchemy.
 
 
+## Default filters (_default_filter)
+
+You can define a `_default_filter` on your FilterSet to always apply a condition, even when no `filters` argument is provided.
+
+- If your default condition doesn't need joins, return a SQLAlchemy clause.
+- If it needs joins, return a tuple `(query, clause)`, same as in “filters that require join”.
+- Default filters are applied to both top-level fields and nested GraphQL connections.
+
+Example (no join):
+```python
+class UserFilter(FilterSet):
+    @staticmethod
+    def _default_filter(info, query):
+        # Only active users by default
+        return User.is_active.is_(True)
+
+    class Meta:
+        model = User
+        fields = {'username': ['eq', 'ilike']}
+```
+
+With a join:
+```python
+class MembershipFilter(FilterSet):
+    @classmethod
+    def _default_filter(cls, info, query):
+        m = cls.aliased(query, Membership, name='only_mods')
+        query = query.join(m, and_(User.id == m.user_id, m.is_moderator.is_(True)))
+        return query, m.id.isnot(None)
+
+    class Meta:
+        model = Membership
+        fields = {'is_moderator': [...]}
+```
+
+Effect in GraphQL (applies even without passing `filters`):
+```graphql
+{
+  allUsers {
+    edges { node { id username } }
+  }
+  # Also works for nested connections:
+  group(id: "...") {
+    users {
+      edges { node { id username } }
+    }
+  }
+}
+```
+
 # Features
 
 ## Filter registration and nested fields filters

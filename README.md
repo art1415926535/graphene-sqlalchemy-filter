@@ -210,7 +210,7 @@ class MembershipFilter(FilterSet):
 
     class Meta:
         model = Membership
-        fields = {'is_moderator': [...]}
+        fields = {}
 ```
 
 Effect in GraphQL (applies even without passing `filters`):

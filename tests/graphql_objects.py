@@ -99,12 +99,22 @@ class GroupFilter(BaseFilter):
 
 
 class ArticleFilter(FilterSet):
+    @classmethod
+    def _default_filter(cls, info, query):
+        author = cls.aliased(query, Author, name="author")
+        query = query.join(author, Article.author)
+        return query, author.is_active.is_(True)
+
     class Meta:
         model = Article
         fields = {"author_first": [...], "author_last": [...]}
 
 
 class AuthorFilter(FilterSet):
+    @staticmethod
+    def _default_filter(info, query):
+        return Author.is_active.is_(True)
+
     class Meta:
         model = Author
         fields = {"author_first": [...], "author_last": [...]}

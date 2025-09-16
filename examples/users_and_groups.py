@@ -131,6 +131,7 @@ def init_db():
         for group in groups
     ]
     session.bulk_save_objects(memberships)
+    session.commit()
     session.close()
 
 
@@ -156,6 +157,10 @@ class UserFilter(BaseFilter):
     member_of_group = graphene.String(
         description="Member of the group that is named"
     )
+
+    @staticmethod
+    def _default_filter(info, query):
+        return User.is_active.is_(True)
 
     @staticmethod
     def is_admin_filter(info, query, value):
@@ -198,7 +203,6 @@ class UserFilter(BaseFilter):
         model = User
         fields = {
             "username": ["eq", "ne", "in", "ilike"],
-            "is_active": ["eq", "ne"],
             "balance": [...],
             "status": ["eq"],
             "is_online": ["eq", "ne"],

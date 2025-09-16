@@ -699,7 +699,8 @@ class FilterSet(graphene.InputObjectType):
 
     @staticmethod
     def _default_filter(
-        info: ResolveInfo, query: Query
+        info: ResolveInfo,  # noqa: ARG004
+        query: Query,  # noqa: ARG004
     ) -> tuple[Query, Any] | None | Any:
         """Apply default filters to the query.
 

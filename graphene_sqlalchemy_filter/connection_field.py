@@ -92,11 +92,8 @@ class FilterableConnectionField(graphene_sqlalchemy.SQLAlchemyConnectionField):
         query = super().get_query(model, info, sort, **args)
 
         request_filters = args.get(cls.filter_arg)
-        if request_filters:
-            filter_set = cls.get_filter_set(info)
-            query = filter_set.filter(info, query, request_filters)
-
-        return query
+        filter_set = cls.get_filter_set(info)
+        return filter_set.filter(info, query, request_filters)
 
     @classmethod
     def get_filter_set(cls, info: ResolveInfo) -> FilterSet:
@@ -247,9 +244,8 @@ class ModelLoader(dataloader.DataLoader):
         subquery = graphene_sqlalchemy.get_query(self.model, self.info.context)
 
         request_filters = self.graphql_args.get(self.filter_arg)
-        if request_filters:
-            filter_set = self._get_filter_set(self.info)
-            subquery = filter_set.filter(self.info, subquery, request_filters)
+        filter_set = self._get_filter_set(self.info)
+        subquery = filter_set.filter(self.info, subquery, request_filters)
 
         aliased_model = aliased(
             self.model, subquery.subquery(with_labels=True)

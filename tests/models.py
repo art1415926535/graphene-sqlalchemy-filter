@@ -102,6 +102,7 @@ class Author(Base):
 
     first_name = Column(String(50), primary_key=True)
     last_name = Column(String(50), primary_key=True)
+    is_active = Column(Boolean, default=True)
 
     articles = relationship("Article", back_populates="author")
 

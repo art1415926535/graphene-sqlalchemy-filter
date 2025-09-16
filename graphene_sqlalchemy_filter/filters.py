@@ -651,7 +651,7 @@ class FilterSet(graphene.InputObjectType):
 
     @classmethod
     def filter(
-        cls, info: ResolveInfo, query: Query, filters: FilterType
+        cls, info: ResolveInfo, query: Query, filters: FilterType | None
     ) -> Query:
         """Return a new query instance with the args ANDed to the existing set.
 
@@ -679,11 +679,40 @@ class FilterSet(graphene.InputObjectType):
             )
             warnings.warn(msg, RuntimeWarning, stacklevel=2)
 
-        query, sqla_filters = cls._translate_many_filter(info, query, filters)
-        if sqla_filters is not None:
-            query = query.filter(*sqla_filters)
+        mb_query_and_filter = cls._default_filter(info, query)
+        if isinstance(mb_query_and_filter, tuple):
+            query, default_filters = mb_query_and_filter
+        else:
+            default_filters = mb_query_and_filter
+
+        if default_filters is not None:
+            query = query.filter(default_filters)
+
+        if filters is not None:
+            query, sqla_filters = cls._translate_many_filter(
+                info, query, filters
+            )
+            if sqla_filters is not None:
+                query = query.filter(*sqla_filters)
 
         return query
+
+    @staticmethod
+    def _default_filter(
+        info: ResolveInfo,  # noqa: ARG004
+        query: Query,  # noqa: ARG004
+    ) -> tuple[Query, Any] | None | Any:
+        """Apply default filters to the query.
+
+        Args:
+            info: GraphQL execution info.
+            query: SQLAlchemy query.
+
+        Returns:
+            SQLAlchemy clause, (query, clause), or None if no default filters.
+
+        """
+        return None
 
     @classmethod
     @lru_cache(maxsize=500)

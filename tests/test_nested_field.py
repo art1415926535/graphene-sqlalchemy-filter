@@ -2,7 +2,10 @@ import sqlite3
 
 import pytest
 
+from graphene.types.definitions import GrapheneObjectType
 from graphene_sqlalchemy.utils import EnumValue
+from graphql import GraphQLArgument, GraphQLField, GraphQLObjectType
+from graphql.language.ast import Field, Name
 
 from graphene_sqlalchemy_filter.connection_field import (
     FilterableConnectionField,
@@ -11,6 +14,7 @@ from graphene_sqlalchemy_filter.connection_field import (
     graphene_sqlalchemy_version_lt_2_1_2,
 )
 
+from .graphql_objects import ArticleConnection, ArticleFilter
 from .models import Article, Author, Group, User
 
 
@@ -23,6 +27,21 @@ from .models import Article, Author, Group, User
 def test_composite_pk(info, session):
     info.path = ["author"]
     info.field_name = "articles"
+    info.field_asts = [Field(name=Name(value="articles"))]
+    article_connection_type = GrapheneObjectType(
+        graphene_type=ArticleConnection, name="AC", fields={}
+    )
+    article_filter_argument = GraphQLArgument(
+        GrapheneObjectType(graphene_type=ArticleFilter, name="AF", fields={})
+    )
+    article_connection_field = GraphQLField(
+        type_=article_connection_type,
+        args={"filters": article_filter_argument},
+    )
+    info.parent_type = GraphQLObjectType(
+        name="Author", fields={"articles": article_connection_field}
+    )
+
     info.context = {"session": session}
 
     author = Author(first_name="Ally", last_name="A")

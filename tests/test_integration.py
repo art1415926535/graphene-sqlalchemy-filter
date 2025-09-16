@@ -4,9 +4,9 @@ from graphene_sqlalchemy_filter.connection_field import (
     graphene_sqlalchemy_version_lt_2_1_2,
 )
 
-from tests.graphql_objects import schema
-from tests.models import Group, Membership, User
-from tests.utils import SQLAlchemyQueryCounter
+from .graphql_objects import schema
+from .models import Article, Author, Group, Membership, User
+from .utils import SQLAlchemyQueryCounter
 
 
 def add_users(session):
@@ -37,6 +37,30 @@ def add_groups(session, with_parent_group=False):
     session.flush()
 
     return groups
+
+
+def add_authors(session):
+    authors = [
+        Author(first_name="John", last_name="Doe", is_active=True),
+        Author(first_name="Alice", last_name="Smith", is_active=False),
+    ]
+    session.bulk_save_objects(authors, return_defaults=True)
+    session.flush()
+    return authors
+
+
+def add_articles(session, authors):
+    articles = [
+        Article(
+            author_first_name=author.first_name,
+            author_last_name=author.last_name,
+            text="Text",
+        )
+        for author in authors
+    ]
+    session.bulk_save_objects(articles, return_defaults=True)
+    session.flush()
+    return articles
 
 
 def add_users_to_new_groups(session, users):
@@ -109,6 +133,48 @@ def test_response_without_filters(session):
 
     node = edges[1]["node"]
     assert node == {"username": "user_2"}
+
+
+def test_response_with_default_filter(session):
+    authors = add_authors(session)
+    add_articles(session, authors)
+    session.commit()
+
+    with SQLAlchemyQueryCounter(session, 4):
+        execution_result = schema.execute(
+            """{
+                allAuthors{edges{node{firstName lastName}}}
+                allArticles{edges{node{authorFirstName}}}
+            }""",
+            context={"session": session},
+        )
+
+        assert not execution_result.errors
+        assert not execution_result.invalid
+
+        assert execution_result.data
+
+    assert "allAuthors" in execution_result.data
+
+    all_authors = execution_result.data["allAuthors"]
+    assert "edges" in all_authors
+
+    authors_edges = all_authors["edges"]
+    expected_authors_edges_count = 1
+    assert len(authors_edges) == expected_authors_edges_count
+
+    author_node = authors_edges[0]["node"]
+    assert author_node == {"firstName": "John", "lastName": "Doe"}
+
+    assert "allArticles" in execution_result.data
+    all_articles = execution_result.data["allArticles"]
+    assert "edges" in all_articles
+    articles_edges = all_articles["edges"]
+    expected_articles_edges_count = 1
+    assert len(articles_edges) == expected_articles_edges_count
+
+    article_node = articles_edges[0]["node"]
+    assert article_node == {"authorFirstName": "John"}
 
 
 def test_response_with_filters(session):

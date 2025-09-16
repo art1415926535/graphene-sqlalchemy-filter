@@ -1,25 +1,41 @@
 import pytest
 
+from graphene.types.definitions import GrapheneObjectType
 from graphene_sqlalchemy.utils import EnumValue
+from graphql import GraphQLArgument, GraphQLField, GraphQLObjectType
+from graphql.language.ast import Field, Name
 
 from graphene_sqlalchemy_filter import FilterSet
 from graphene_sqlalchemy_filter.connection_field import gqls_version
 
-from tests import models
-from tests.graphql_objects import Query, UserFilter
+from . import models
+from .graphql_objects import Query, UserConnection, UserFilter
 
 
-def test_sort(info):
-    filters = None
-    sort = "username desc"
-    query = Query.field.get_query(
-        models.User, info, sort=EnumValue("username", sort), filters=filters
+def test_sort(info_and_user_query):
+    info, user_query = info_and_user_query
+    info.field_name = "allUsers"
+    info.field_asts = [Field(name=Name(value="allUsers"), arguments=[])]
+    user_connection_type = GrapheneObjectType(
+        graphene_type=UserConnection, name="UC", fields={}
     )
+    user_filter_argument = GraphQLArgument(
+        GrapheneObjectType(graphene_type=UserFilter, name="UF", fields={})
+    )
+    all_users_field = GraphQLField(
+        type_=user_connection_type, args={"filters": user_filter_argument}
+    )
+    info.parent_type = GraphQLObjectType(
+        name="Query", fields={"allUsers": all_users_field}
+    )
+    sort = models.User.username.desc()
 
+    query = Query.field.get_query(
+        models.User, info, sort=EnumValue("USERNAME_DESC", sort)
+    )
     where_clause = query.whereclause
     assert where_clause is None
-
-    assert str(query._order_by_clauses[0]) == sort
+    assert query._order_by_clauses == (sort,)
 
 
 def test_empty_filters_query(info_and_user_query):

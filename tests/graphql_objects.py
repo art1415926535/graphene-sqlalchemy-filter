@@ -44,6 +44,7 @@ class UserFilter(BaseFilter):
     member_of_group = graphene.String(
         description="Member of the group that is named"
     )
+    has_no_groups = graphene.Boolean(description="User has no groups")
 
     @staticmethod
     def is_admin_filter(info, query, value):
@@ -80,6 +81,19 @@ class UserFilter(BaseFilter):
         query = cls._join(query, group, membership.group)
 
         return query, group.name == value
+
+    @classmethod
+    def has_no_groups_filter(cls, info, query, value):
+        membership = cls.aliased(query, Membership, name="has_no_groups")
+
+        query = cls._outerjoin(query, membership, User.memberships)
+
+        if value:
+            filter_ = membership.id_.is_(None)
+        else:
+            filter_ = membership.id_.isnot(None)
+
+        return query, filter_
 
     class Meta:
         model = User

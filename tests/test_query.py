@@ -175,9 +175,9 @@ def test_complex_filters(info_and_user_query):
     filters = {
         "is_admin": False,
         "or": [
-            {"has_no_groups": True},
             {
                 "and": [
+                    {"has_no_groups": True},
                     {"username_ilike": "%loki%"},
                     {"balance_range": {"begin": 500, "end": 1000}},
                     {"is_moderator": True},
@@ -185,6 +185,7 @@ def test_complex_filters(info_and_user_query):
             },
             {
                 "or": [
+                    {"has_no_groups": False},
                     {"not": {"is_active": True}, "is_moderator": True},
                     {"member_of_group": "Valgalla", "username_not_in": ["1"]},
                     {},
@@ -196,17 +197,18 @@ def test_complex_filters(info_and_user_query):
 
     ok = (
         '"user".username != :username_1 AND '
-        "(has_no_groups.id IS NULL OR"
+        "(has_no_groups.id IS NULL AND"
         ' lower("user".username) LIKE lower(:username_2)'
         ' AND "user".balance BETWEEN :balance_1 AND :balance_2'
         " AND is_moderator.id IS NOT NULL"
+        " OR has_no_groups.id IS NOT NULL"
         ' OR "user".is_active != true'
         " AND is_moderator.id IS NOT NULL"
         " OR of_group.name = :name_1"
         ' AND ("user".username NOT IN (__[POSTCOMPILE_username_3])))'
     )
     where_clause = str(query.whereclause)
-    assert where_clause == ok
+    assert where_clause == ok, where_clause
 
     str_query = str(query).lower()
     assert str_query.count("left outer join member as has_no_groups") == 1, (

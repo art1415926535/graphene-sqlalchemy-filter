@@ -44,6 +44,7 @@ class UserFilter(BaseFilter):
     member_of_group = graphene.String(
         description="Member of the group that is named"
     )
+    has_no_groups = graphene.Boolean(description="User has no groups")
 
     @staticmethod
     def is_admin_filter(info, query, value):
@@ -56,7 +57,8 @@ class UserFilter(BaseFilter):
     def is_moderator_filter(cls, info, query, value):
         membership = cls.aliased(query, Membership, name="is_moderator")
 
-        query = query.join(
+        query = cls._join(
+            query,
             membership,
             and_(
                 User.id == membership.user_id,
@@ -75,11 +77,23 @@ class UserFilter(BaseFilter):
         membership = cls.aliased(query, Membership, name="member_of")
         group = cls.aliased(query, Group, name="of_group")
 
-        query = query.join(membership, User.memberships).join(
-            group, membership.group
-        )
+        query = cls._join(query, membership, User.memberships)
+        query = cls._join(query, group, membership.group)
 
         return query, group.name == value
+
+    @classmethod
+    def has_no_groups_filter(cls, info, query, value):
+        membership = cls.aliased(query, Membership, name="has_no_groups")
+
+        query = cls._outerjoin(query, membership, User.memberships)
+
+        if value:
+            filter_ = membership.id_.is_(None)
+        else:
+            filter_ = membership.id_.isnot(None)
+
+        return query, filter_
 
     class Meta:
         model = User
@@ -102,7 +116,7 @@ class ArticleFilter(FilterSet):
     @classmethod
     def _default_filter(cls, info, query):
         author = cls.aliased(query, Author, name="author")
-        query = query.join(author, Article.author)
+        query = cls._join(query, author, Article.author)
         return query, author.is_active.is_(True)
 
     class Meta:

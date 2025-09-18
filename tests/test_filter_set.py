@@ -78,7 +78,8 @@ def test_number_filter_fields():
             model = models.User
             fields = user_filters
 
-    required_count = 6  # and, or, not, is_admin, is_moderator, member_of_group
+    # and, or, not, is_admin, is_moderator, member_of_group, has_no_groups
+    required_count = 7
 
     # Add default filters.
     for values in user_filters.values():

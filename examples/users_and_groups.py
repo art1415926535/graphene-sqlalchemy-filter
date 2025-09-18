@@ -174,7 +174,8 @@ class UserFilter(BaseFilter):
     def is_moderator_filter(cls, info, query, value):
         membership = cls.aliased(query, Membership, name="is_moderator")
 
-        query = query.join(
+        query = cls._join(
+            query,
             membership,
             and_(
                 User.id == membership.user_id,
@@ -193,9 +194,8 @@ class UserFilter(BaseFilter):
         membership = cls.aliased(query, Membership, name="member_of")
         group = cls.aliased(query, Group, name="of_group")
 
-        query = query.join(membership, User.memberships).join(
-            group, membership.group
-        )
+        query = cls._join(query, membership, User.memberships)
+        query = cls._join(query, group, membership.group)
 
         return query, group.name == value
 
@@ -210,6 +210,21 @@ class UserFilter(BaseFilter):
 
 
 class MembershipFilter(BaseFilter):
+    username = graphene.String(description="Username of the member user")
+    user_id = graphene.Int(description="ID of the member user")
+
+    @classmethod
+    def username_filter(cls, info, query, value):
+        user = cls.aliased(query, User, name="member_user")
+        query = cls._join(query, user, Membership.user_id == user.id)
+        return query, user.username == value
+
+    @classmethod
+    def user_id_filter(cls, info, query, value):
+        user = cls.aliased(query, User, name="member_user")
+        query = cls._join(query, user, Membership.user_id == user.id)
+        return query, user.id == value
+
     class Meta:
         model = Membership
         fields = {"is_moderator": [...]}

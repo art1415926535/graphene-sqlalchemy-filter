@@ -12,8 +12,7 @@ from . import models
 from .graphql_objects import Query, UserConnection, UserFilter
 
 
-def test_sort(info_and_user_query):
-    info, user_query = info_and_user_query
+def test_sort(info):
     info.field_name = "allUsers"
     info.field_asts = [Field(name=Name(value="allUsers"), arguments=[])]
     user_connection_type = GrapheneObjectType(
@@ -208,5 +207,5 @@ def test_complex_filters(info_and_user_query):
     assert where_clause == ok
 
     str_query = str(query)
-    join_count = 4
+    join_count = 3
     assert str_query.lower().count("join") == join_count, str_query

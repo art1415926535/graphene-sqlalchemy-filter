@@ -26,7 +26,7 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 try:
     from sqlalchemy_utils import TSVectorType
 except ImportError:
-    TSVectorType: type[object] = object
+    TSVectorType: None = None
 
 
 if TYPE_CHECKING:
@@ -160,7 +160,6 @@ class FilterSet(graphene.InputObjectType):
         types.Time: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.DateTime: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.String: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
-        TSVectorType: [EQ, NE, LIKE, ILIKE, IN, NOT_IN],
         types.Integer: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         types.Numeric: [EQ, LT, LTE, GT, GTE, NE, IN, NOT_IN, RANGE],
         postgresql.UUID: [EQ, NE, IN, NOT_IN],
@@ -181,7 +180,11 @@ class FilterSet(graphene.InputObjectType):
             CONTAINED_BY,
             OVERLAP,
         ],
-    }
+    } | (
+        {TSVectorType: [EQ, NE, LIKE, ILIKE, IN, NOT_IN]}
+        if TSVectorType
+        else {}
+    )
 
     ALL: ClassVar[list[Any]] = [...]
 
@@ -394,6 +397,50 @@ class FilterSet(graphene.InputObjectType):
                 filter_aliases[key] = alias
 
             return alias
+
+    @classmethod
+    def _join(
+        cls, query: Query, target: Any, *props: Any, **kwargs: Any
+    ) -> Query:
+        """Join to the given target.
+
+        Notes:
+            Other arguments are the same as sqlalchemy.orm.Query.join.
+
+        Args:
+            query: SQLAlchemy query.
+
+        Returns:
+            None.
+
+        """
+        aliases = cls._aliases_from_query(query)
+        if target in aliases.values():
+            return query
+
+        return query.join(target, *props, **kwargs)
+
+    @classmethod
+    def _outerjoin(
+        cls, query: Query, target: Any, *props: Any, **kwargs: Any
+    ) -> Query:
+        """Outer join to the given target.
+
+        Notes:
+            Other arguments are the same as sqlalchemy.orm.Query.outerjoin.
+
+        Args:
+            query: SQLAlchemy query.
+
+        Returns:
+            None.
+
+        """
+        aliases = cls._aliases_from_query(query)
+        if target in aliases.values():
+            return query
+
+        return query.outerjoin(target, *props, **kwargs)
 
     @classmethod
     def _build_example_for_deprecation_warning(
